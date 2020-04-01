@@ -1,9 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="E:\DEV4\Graphics-II-Course-Project\DEV4_Project\CMakeGW\main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="E:\DEV4\Graphics-II-Course-Project\DEV4_Project\CMakeGW\CMakeLists.txt" />
@@ -12,5 +10,22 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{0AE37227-1BB0-3A56-8288-1EA6619F83C8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{965f998f-8449-4145-bf6f-94f1a1847c84}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="defines.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="DEV4_PS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="shaders.fx">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="DEV4_VS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

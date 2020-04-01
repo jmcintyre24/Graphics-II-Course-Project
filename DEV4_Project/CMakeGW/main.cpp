@@ -1,18 +1,23 @@
-// Simple basecode showing how to create a window and attatch a d3d11surface
-#define GATEWARE_ENABLE_CORE
-#define GATEWARE_ENABLE_SYSTEM
-#define GATEWARE_ENABLE_GRAPHICS 
-// Ignore some GRAPHICS libraries we aren't going to use
-#define GATEWARE_DISABLE_GDIRECTX12SURFACE 
-#define GATEWARE_DISABLE_GRASTERSURFACE
-#define GATEWARE_DISABLE_GOPENGLSURFACE
-#define GATEWARE_DISABLE_GVULKANSURFACE 
-#include "../Gateware/Gateware.h"
+#include "/DEV4/Graphics-II-Course-Project//DEV4_Project//Builds/defines.h"
 
-using namespace GW;
-using namespace CORE;
-using namespace SYSTEM;
-using namespace GRAPHICS;
+void InitDevice(GDirectX11Surface& d3d11)
+{
+	IDXGISwapChain* swap;
+	ID3D11DeviceContext* con;
+	ID3D11RenderTargetView* view;
+	if (+d3d11.GetImmediateContext((void**)&con) &&
+		+d3d11.GetRenderTargetView((void**)&view) &&
+		+d3d11.GetSwapchain((void**)&swap))
+	{
+		con->ClearRenderTargetView(view, clr);
+		swap->Present(1, 0);
+		// release incremented COM reference counts
+		swap->Release();
+		view->Release();
+		con->Release();
+	}
+}
+
 // lets pop a window and use D3D11 to clear to a green screen
 int main()
 {
@@ -28,6 +33,7 @@ int main()
 			if (+msgs.Find(GWindow::Events::RESIZE, true))
 				clr[2] += 0.01f;
 			});
+		
 		if (+d3d11.Create(win, 0))
 		{
 			while (+win.ProcessWindowEvents())
