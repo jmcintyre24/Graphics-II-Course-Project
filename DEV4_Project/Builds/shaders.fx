@@ -3,7 +3,7 @@
 // Vertex Shader
 float4 VS( float4 Pos : POSITION ) : SV_POSITION
 {
-	Pos.x *= 0.5f;
+	//Pos.x *= 0.5f;
     return Pos;
 }
 

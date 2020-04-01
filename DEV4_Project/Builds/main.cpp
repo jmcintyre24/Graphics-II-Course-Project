@@ -159,15 +159,15 @@ int main()
 	{
 		win.SetWindowName("DEV4_Project");
 
-		width = +win.GetWidth(width);
-		height = +win.GetHeight(height);
+		+win.GetWidth(width);
+		+win.GetHeight(height);
 
 		float clr[] = { 0.2f, 0.2f, 0.8f, 1 }; // start with blue
 		msgs.Create(win, [&]() {
 			if (+msgs.Find(GWindow::Events::RESIZE, true))
 				{
-					width = +win.GetWidth(width);
-					height = +win.GetHeight(height);
+					+win.GetWidth(width);
+					+win.GetHeight(height);
 					clr[0] += 0.01f; // move towards a cyan as they resize
 				}
 			});
@@ -187,11 +187,22 @@ int main()
 					con->ClearRenderTargetView(view, clr);
 
 					// Render a triangle
+					// setup the pipeline
+					ID3D11RenderTargetView* const views[] = { view };
+					con->OMSetRenderTargets(ARRAYSIZE(views), views, nullptr);
+					// Set vertex buffer
+					const UINT stride[] = { sizeof(SimpleVertex) };
+					const UINT offset[] = { 0 };
+					ID3D11Buffer* const buffs[] = { vertexbuffer };
+					con->IASetVertexBuffers(0, ARRAYSIZE(buffs), buffs, stride, offset);
+
 					con->VSSetShader(vertexshader, nullptr, 0);
 					con->PSSetShader(pixelshader, nullptr, 0);
+					con->IASetInputLayout(input);
+					con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 					con->Draw(3, 0);
 
-					swap->Present(0, 0);
+					swap->Present(1, 0);
 					// release incremented COM reference counts
 					swap->Release();
 					view->Release();
