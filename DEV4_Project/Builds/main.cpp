@@ -1,6 +1,7 @@
 #include "defines.h"
 
 #include "DrawClass.h"
+#include "StoneHenge.h"
 
 using namespace GW;
 using namespace CORE;
@@ -13,6 +14,39 @@ unsigned int width, height;
 GWindow win;
 GEventReceiver msgs;
 GDirectX11Surface d3d11;
+
+void ReadModel(Cube::SimpleMesh& mesh)
+{
+	// Read Vertex Data In
+	for (int i = 0; i < 1457; i++)
+	{
+		//Position
+		Cube::SimpleVertex vert;
+		vert.Pos = { (StoneHenge_data[i].pos[0] * 0.1f),
+			(StoneHenge_data[i].pos[1] * 0.1f),
+			(StoneHenge_data[i].pos[2] * 0.1f) };
+
+		//UV		   
+		//stoneHengeModel[i].uv.x = StoneHenge_data[i].uvw[0];
+		//stoneHengeModel[i].uv.y = StoneHenge_data[i].uvw[1];
+
+		//Normal	   
+		//stoneHengeModel[i].normal.x = (StoneHenge_data[i].nrm[0]);
+		//stoneHengeModel[i].normal.y = (StoneHenge_data[i].nrm[1]);
+		//stoneHengeModel[i].normal.z = (StoneHenge_data[i].nrm[2]);
+
+		//For now render random color.
+		vert.Color = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		mesh.vertexList.push_back(vert);
+	}
+
+	// Read Indicies in - COULD USE MEMCOPY HERE
+	for (int i = 0; i < 2532; i++)
+	{
+		mesh.indicesList.push_back(StoneHenge_indicies[i]);
+	}
+}
 
 // lets pop a window and use D3D11 to clear to a green screen
 int main()
@@ -35,8 +69,12 @@ int main()
 			});
 		if (+d3d11.Create(win, 0))
 		{
+			Cube::SimpleMesh mesh;
+
+			ReadModel(mesh);
+
 			//Triangle tri(d3d11, win);
-			Cube cub(d3d11, win);
+			Cube cub(d3d11, win, &mesh);
 			while (+win.ProcessWindowEvents())
 			{
 				IDXGISwapChain* swap = nullptr;

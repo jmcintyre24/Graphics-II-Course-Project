@@ -318,6 +318,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   <ItemGroup>
     <ClInclude Include="defines.h" />
     <ClInclude Include="DrawClass.h" />
+    <ClInclude Include="StoneHenge.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="DEV4_PS.hlsl">

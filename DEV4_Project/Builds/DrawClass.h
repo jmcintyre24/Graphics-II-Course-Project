@@ -169,12 +169,6 @@ private:
 
 class Cube : DrawClass
 {
-	struct SimpleVertex
-	{
-		XMFLOAT3 Pos;
-		XMFLOAT4 Color;
-	};
-
 	struct ConstantBuffer
 	{
 		XMMATRIX mWorld;
@@ -193,8 +187,26 @@ class Cube : DrawClass
 	XMMATRIX									g_Projection;
 
 public:
-	Cube(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win) : DrawClass(_d3d11, _win)
+	struct SimpleVertex
 	{
+		XMFLOAT3 Pos;
+		XMFLOAT4 Color;
+	};
+
+	struct SimpleMesh
+	{
+		std::vector<SimpleVertex> vertexList;
+		std::vector<unsigned int> indicesList;
+	};
+
+private: 	
+	SimpleMesh* mesh = nullptr;
+
+public:
+
+	Cube(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win, SimpleMesh* _mesh = nullptr) : DrawClass(_d3d11, _win)
+	{
+		mesh = _mesh;
 		ID3D11Device* dev = nullptr;
 		ID3D11DeviceContext* con = nullptr;
 		+d3d11.GetDevice((void**)&dev);
@@ -250,61 +262,90 @@ public:
 			return;
 		}
 		pPSBlob->Release();
-		// Create vertex buffer
-		SimpleVertex vertices[] =
-		{
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f),   XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f),    XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f),     XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f),    XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
-
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f),  XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f),   XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f),    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f),   XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
-		};
+		
 
 		D3D11_BUFFER_DESC bd = {};
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(SimpleVertex) * 8;
-		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		bd.CPUAccessFlags = 0;
-
 		D3D11_SUBRESOURCE_DATA InitData = {};
-		InitData.pSysMem = vertices;
-		if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
-			return;
-
-		// NEW ADDITION FOR CUBE RENDER //
-
-		// Create index buffer
-		WORD indices[] =
+		// If there's no mesh, render a normal cube.
+		if (mesh == nullptr)
 		{
-			3,1,0,
-			2,1,3,
+			// Create vertex buffer
+			SimpleVertex vertices[] =
+			{
+				{ XMFLOAT3(-1.0f, 1.0f, -1.0f),   XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
+				{ XMFLOAT3(1.0f, 1.0f, -1.0f),    XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+				{ XMFLOAT3(1.0f, 1.0f, 1.0f),     XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
+				{ XMFLOAT3(-1.0f, 1.0f, 1.0f),    XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
 
-			0,5,4,
-			1,5,0,
+				{ XMFLOAT3(-1.0f, -1.0f, -1.0f),  XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
+				{ XMFLOAT3(1.0f, -1.0f, -1.0f),   XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
+				{ XMFLOAT3(1.0f, -1.0f, 1.0f),    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
+				{ XMFLOAT3(-1.0f, -1.0f, 1.0f),   XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
+			};
 
-			3,4,7,
-			0,4,3,
+			bd.Usage = D3D11_USAGE_DEFAULT;
+			bd.ByteWidth = sizeof(SimpleVertex) * 8;
+			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+			bd.CPUAccessFlags = 0;
 
-			1,6,5,
-			2,6,1,
+			InitData.pSysMem = vertices;
+			if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
+				return;
+		}
+		else
+		{
+			bd.Usage = D3D11_USAGE_DEFAULT;
+			bd.ByteWidth = sizeof(SimpleVertex) * mesh->vertexList.size();
+			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+			bd.CPUAccessFlags = 0;
 
-			2,7,6,
-			3,7,2,
+			InitData.pSysMem = mesh->vertexList.data();
+			if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
+				return;
+		}
 
-			6,4,5,
-			7,4,6,
-		};
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(WORD) * 36;        // 36 vertices needed for 12 triangles in a triangle list
-		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		bd.CPUAccessFlags = 0;
-		InitData.pSysMem = indices;
-		if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
-			return;
+		if (mesh == nullptr)
+		{
+			// Create index buffer
+			WORD indices[] =
+			{
+				3,1,0,
+				2,1,3,
+
+				0,5,4,
+				1,5,0,
+
+				3,4,7,
+				0,4,3,
+
+				1,6,5,
+				2,6,1,
+
+				2,7,6,
+				3,7,2,
+
+				6,4,5,
+				7,4,6,
+			};
+			bd.Usage = D3D11_USAGE_DEFAULT;
+			bd.ByteWidth = sizeof(WORD) * 36;        // 36 vertices needed for 12 triangles in a triangle list
+			bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+			bd.CPUAccessFlags = 0;
+			InitData.pSysMem = indices;
+			if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
+				return;
+		}
+		else
+		{
+			bd.Usage = D3D11_USAGE_DEFAULT;
+			bd.ByteWidth = sizeof(int) * mesh->indicesList.size();        // 36 vertices needed for 12 triangles in a triangle list
+			bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+			bd.CPUAccessFlags = 0;
+			InitData.pSysMem = mesh->indicesList.data();
+			if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
+				return;
+		}
+
 
 		// Create the constant buffer
 		bd.Usage = D3D11_USAGE_DEFAULT;
@@ -347,7 +388,10 @@ public:
 		ID3D11Buffer* const buffs[] = { vertexbuffer.Get() };
 		con->IASetVertexBuffers(0, ARRAYSIZE(buffs), buffs, stride, offset);
 		//Set Index Buffer
-		con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+		if(mesh == nullptr)
+			con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R16_UINT, 0); //Set Index Buffer
+		else
+			con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 		ConstantBuffer cb;
 		cb.mWorld = XMMatrixTranspose(g_World);
@@ -360,7 +404,10 @@ public:
 		con->PSSetShader(pixelshader.Get(), nullptr, 0);
 		con->IASetInputLayout(input.Get());
 		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		con->DrawIndexed(36, 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
+		if (mesh == nullptr)
+			con->DrawIndexed(36, 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
+		else
+			con->DrawIndexed(mesh->indicesList.size(), 0, 0);
 
 		con->Release();
 		view->Release();

@@ -15,5 +15,6 @@
 #include "../Gateware/Gateware.h"
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
+#include <vector>
 
 using namespace DirectX;
