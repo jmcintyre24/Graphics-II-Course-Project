@@ -318,7 +318,7 @@ public:
 		g_World = XMMatrixIdentity();
 
 		// Initialize the view matrix
-		XMVECTOR Eye = XMVectorSet(0.0f, 2.0f, -5.0f, 0.0f);
+		XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
 		XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 		XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 		g_View = XMMatrixLookAtLH(Eye, At, Up);
@@ -368,6 +368,7 @@ public:
 
 	void UserInput()
 	{
+		//Rotate the objects.
 		if (GetAsyncKeyState('J'))
 		{
 			g_World *= XMMatrixRotationY(0.1f);
@@ -376,6 +377,121 @@ public:
 		if (GetAsyncKeyState('L'))
 		{
 			g_World *= XMMatrixRotationY(-0.1f);
+		}
+
+		//Look around movement
+		if ((GetKeyState(VK_RBUTTON) & 0x100) != 0)
+		{
+			POINT cursorPos;
+			GetCursorPos(&cursorPos);
+
+			unsigned int clientPosX, clientPosY;
+			win.GetX(clientPosX);
+			win.GetY(clientPosY);
+			unsigned int cosX = clientPosX + (width / 2);
+			unsigned int cosY = clientPosY + (height / 2);
+
+			int diffX = (cosX - cursorPos.x);
+			int diffY = (cosY - cursorPos.y);
+
+			if (diffX < -mouseThreshold)
+			{
+				g_View *= XMMatrixRotationY(-0.05f);
+			}
+			else if (diffX > mouseThreshold)
+			{
+				g_View *= XMMatrixRotationY(0.05f);
+			}
+
+			if (diffY < -mouseThreshold)
+			{
+				g_View *= XMMatrixRotationX(-0.05f);
+
+			}
+			else if (diffY > mouseThreshold)
+			{
+				g_View *= XMMatrixRotationX(0.05f);
+			}
+
+			//Set it back to the center
+			SetCursorPos(cosX, cosY);
+		}
+
+		//Since the view matrix is yet to be transposed until it is rendered, I can use it for moving the camera.
+		if (GetAsyncKeyState('W'))
+		{
+			XMMATRIX translate = {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, -0.1f, 1
+			};
+			g_View = XMMatrixMultiply(g_View, translate);
+		}
+
+		if (GetAsyncKeyState('S'))
+		{
+			XMMATRIX translate = {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0.1f, 1
+			};
+			g_View = XMMatrixMultiply(g_View, translate);
+		}
+
+		if (GetAsyncKeyState('A'))
+		{
+			XMMATRIX translate = {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0.1f, 0, 0, 1
+			};
+			g_View = XMMatrixMultiply(g_View, translate);
+		}
+
+		if (GetAsyncKeyState('D'))
+		{
+			XMMATRIX translate = {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			-0.1f, 0, 0, 1
+			};
+			g_View = XMMatrixMultiply(g_View, translate);
+		}
+
+		if (GetAsyncKeyState('Q'))
+		{
+			g_View *= XMMatrixRotationY(0.1f);
+		}
+
+		if (GetAsyncKeyState('E'))
+		{
+			g_View *= XMMatrixRotationY(-0.1f);
+		}
+
+		if (GetAsyncKeyState(32))
+		{
+			XMMATRIX translate = {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, -0.1f, 0, 1
+			};
+			g_View = XMMatrixMultiply(g_View, translate);
+		}
+
+		if (GetAsyncKeyState('C'))
+		{
+			XMMATRIX translate = {
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0.1f, 0, 1
+			};
+			g_View = XMMatrixMultiply(g_View, translate);
 		}
 	}
 };

@@ -1,5 +1,7 @@
 #pragma once
 
+#define mouseThreshold 1
+
 // Simple basecode showing how to create a window and attatch a d3d11surface
 #define GATEWARE_ENABLE_CORE
 #define GATEWARE_ENABLE_SYSTEM
