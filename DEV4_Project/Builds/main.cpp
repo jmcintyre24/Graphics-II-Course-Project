@@ -48,6 +48,18 @@ void ReadModel(Mesh::SimpleMesh& mesh)
 	}
 }
 
+void PrintInstructions()
+{
+	std::cout << "~~Controls~~ \n"
+		<< "(TOGGLE)Z -> (HOLD)Left-Mouse -> Move Directional Light\n"
+		<< "(HOLD)Right-Mouse - Look Around\n"
+		<< "WASD - General Camera Movement\n"
+		<< "C - Travel Downwards\n"
+		<< "SPACE - Travel Upwards\n"
+		<< "Q\E - Quickly turn left and right\n"
+		<< "~~~~~~~~~~ERRORS BELOW THIS LINE~~~~~~~~~~\n\n";
+}
+
 // lets pop a window and use D3D11 to clear to a green screen
 int main()
 {
@@ -71,6 +83,7 @@ int main()
 		{
 			Mesh::SimpleMesh mesh;
 
+			PrintInstructions();
 			ReadModel(mesh);
 
 			//Triangle tri(d3d11, win);

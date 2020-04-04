@@ -73,3 +73,8 @@ float4 PSSolid(PS_INPUT input) : SV_Target
 {
     return vOutputColor;
 }
+
+float4 PSUnique(PS_INPUT input) : SV_Target
+{
+    return vOutputColor;
+}

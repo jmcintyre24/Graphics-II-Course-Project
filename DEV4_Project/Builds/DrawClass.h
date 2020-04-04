@@ -223,6 +223,7 @@ class Mesh : DrawClass
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>			vertexshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderLights = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderUnique = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				vertexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				indexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				constantbuffer = nullptr;
@@ -233,6 +234,8 @@ class Mesh : DrawClass
 	XMMATRIX											g_Projection;
 
 	bool doFlip = false;
+	bool moveDirLight = false;
+	bool ghostProtect = false;
 
 	XMFLOAT4 lightDir[2], lightClr[2];
 
@@ -383,6 +386,23 @@ public:
 			pPSBlob->Release();
 			return;
 		}
+
+		// Compile the lighting pixel shader
+		pPSBlob = nullptr;
+		if (FAILED(DrawClass::CompileShaderFromFile(L"shaders.fx", "PSUnique", "ps_4_0", &pPSBlob)))
+		{
+			MessageBox(nullptr,
+				L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
+			return;
+		}
+
+		// Create the pixel shader
+		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, pixelshaderUnique.GetAddressOf())))
+		{
+			std::cout << (char*)errors->GetBufferPointer() << std::endl;
+			pPSBlob->Release();
+			return;
+		}
 		pPSBlob->Release();
 		
 
@@ -461,9 +481,9 @@ public:
 		{
 			// Directional Lighting
 			lightDir[0] = { -0.577f, 0.577f, -0.577f, 1.0f };
-			lightClr[0] = { 0.5f, 0.5f, 0.5f, 1.0f };
+			lightClr[0] = { 0.85f, 0.85f, 0.85f, 1.0f };
 			// Positional Lighting
-			lightDir[1] = { 0.0f, 0.0f, -1.0f, 1.0f };
+			lightDir[1] = { 0.0f, 0.2f, -1.0f, 1.0f };
 			lightClr[1] = { 0.7f, 0.2f, 0.2f, 1.0f };
 		}
 
@@ -486,7 +506,7 @@ public:
 			timeStart = timeCur;
 		t = (timeCur - timeStart) / 1500.0f;
 
-		// Render a triangle
+		// Grab the context and view.
 		ID3D11DeviceContext* con;
 		ID3D11RenderTargetView* view;
 		d3d11.GetImmediateContext((void**)&con);
@@ -511,6 +531,21 @@ public:
 			if (XMVector3Greater({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.8f, 0.8f, 0.8f }))
 				doFlip = false;
 		}
+
+		// Rotate the directional light
+		if (!moveDirLight)
+		{
+			XMMATRIX mRotate = XMMatrixRotationY(0.5f * t);
+			XMVECTOR vLightDir = XMLoadFloat4(&lightDir[0]);
+			vLightDir = XMVector3Transform(vLightDir, mRotate);
+			XMStoreFloat4(&lightDir[0], vLightDir);
+		}
+
+		// Rotate the second light around the origin
+		XMMATRIX mRotate = XMMatrixRotationY(-2.0f * t);
+		XMVECTOR vLightDir = XMLoadFloat4(&lightDir[1]);
+		vLightDir = XMVector3Transform(vLightDir, mRotate);
+		XMStoreFloat4(&lightDir[1], vLightDir);
 
 		con->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
@@ -551,7 +586,10 @@ public:
 			cb.vOutputColor = lightClr[i];
 			con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
-			con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
+			if(i == 0)
+				con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
+			else
+				con->PSSetShader(pixelshaderUnique.Get(), nullptr, 0);
 			con->DrawIndexed(mesh->indicesList.size(), 0, 0);
 		}
 
@@ -563,7 +601,7 @@ public:
 
 	void UserInput()
 	{
-		//Rotate the objects.
+		// Rotate the objects.
 		if (GetAsyncKeyState('J'))
 		{
 			g_World *= XMMatrixRotationY(0.1f);
@@ -574,7 +612,19 @@ public:
 			g_World *= XMMatrixRotationY(-0.1f);
 		}
 
-		//Look around movement
+		// Toggle the ability to move directional light with M1
+		if ((GetKeyState('Z') & 0x8000) && ghostProtect == false )
+		{
+			ghostProtect = true;
+			moveDirLight = !moveDirLight;
+		}
+		else if ((GetKeyState('Z') == 0x0000) && ghostProtect == true)
+		{
+			moveDirLight = !moveDirLight;
+			ghostProtect = false;
+		}
+
+		// Look around movement
 		if ((GetKeyState(VK_RBUTTON) & 0x100) != 0)
 		{
 			POINT cursorPos;
@@ -625,7 +675,31 @@ public:
 			SetCursorPos(cosX, cosY);
 		}
 
-		//Since the view matrix is yet to be transposed until it is rendered, I can use it for moving the camera.
+		// Move Directional Light
+		if (moveDirLight && (GetKeyState(VK_LBUTTON) & 0x100) != 0)
+		{
+			POINT cursorPos;
+			GetCursorPos(&cursorPos);
+
+			unsigned int clientPosX, clientPosY;
+			win.GetX(clientPosX);
+			win.GetY(clientPosY);
+			unsigned int cosX = clientPosX + (width / 2);
+			unsigned int cosY = clientPosY + (height / 2);
+
+			int diffX = (cosX - cursorPos.x);
+			int diffY = (cosY - cursorPos.y);
+
+			XMMATRIX mRotate = XMMatrixRotationY(0.0125f * (diffX + diffY) );
+			XMVECTOR vLightDir = XMLoadFloat4(&lightDir[0]);
+			vLightDir = XMVector3Transform(vLightDir, mRotate);
+			XMStoreFloat4(&lightDir[0], vLightDir);
+
+			//Set it back to the center
+			SetCursorPos(cosX, cosY);
+		}
+
+		// Since the view matrix is yet to be transposed until it is rendered, I can use it for moving the camera.
 		if (GetAsyncKeyState('W'))
 		{
 			XMMATRIX translate = {
