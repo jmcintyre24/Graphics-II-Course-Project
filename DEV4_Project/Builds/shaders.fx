@@ -15,6 +15,8 @@ cbuffer ConstantBuffer : register(b0)
     matrix World;
     matrix View;
     matrix Projection;
+    float4 vLightDir[2];
+    float4 vLightColor[2];
     float4 vOutputColor;
 }
 
@@ -43,16 +45,31 @@ PS_INPUT VS(VS_INPUT input)
     output.Pos = mul(input.Pos, World);
     output.Pos = mul(output.Pos, View);
     output.Pos = mul(output.Pos, Projection);
-    //output.Norm = mul(float4(input.Norm, 1), World).xyz;
+    output.Norm = mul(float4(input.Norm, 1), World).xyz;
     output.Tex = input.Tex;
     return output;
 }
 
 
 //--------------------------------------------------------------------------------------
-// Pixel Shader
+// Pixel Shaders
 //--------------------------------------------------------------------------------------
 float4 PS(PS_INPUT input) : SV_Target
 {
-    return txDiffuse.Sample(samLinear, input.Tex) * vOutputColor;
+    float4 finalColor = 0;
+    
+    for (int i = 0; i < 2; i++)
+    {
+        finalColor += saturate(dot((float3) vLightDir[i], input.Norm) * vLightColor[i]);
+    }
+    finalColor *= txDiffuse.Sample(samLinear, input.Tex);
+    finalColor.a = 1;
+    return finalColor;
+    
+    //return txDiffuse.Sample(samLinear, input.Tex) * vOutputColor;
+}
+
+float4 PSSolid(PS_INPUT input) : SV_Target
+{
+    return vOutputColor;
 }

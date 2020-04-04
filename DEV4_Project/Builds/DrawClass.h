@@ -48,27 +48,33 @@ private:
 
 };
 
-class Triangle : DrawClass
+class Cube : DrawClass
 {
 	struct SimpleVertex
 	{
 		XMFLOAT3 Pos;
+		XMFLOAT4 Color;
 	};
-
+	struct ConstantBuffer
+	{
+		XMMATRIX mWorld;
+		XMMATRIX mView;
+		XMMATRIX mProjection;
+	};
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>	input = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>	vertexshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>	pixelshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>		vertexbuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>		indexbuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>		constantbuffer = nullptr;
+
 public:
-	Triangle(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win) : DrawClass(_d3d11, _win)
+	Cube(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win) : DrawClass(_d3d11, _win)
 	{
-		d3d11 = _d3d11;
-		win = _win;
 		ID3D11Device* dev = nullptr;
 		ID3D11DeviceContext* con = nullptr;
 		+d3d11.GetDevice((void**)&dev);
 		+d3d11.GetImmediateContext((void**)(&con));
-
 		// Compile the vertex shader
 		Microsoft::WRL::ComPtr<ID3DBlob> errors;
 		ID3DBlob* pVSBlob = nullptr;
@@ -77,7 +83,6 @@ public:
 			std::cout << (char*)errors->GetBufferPointer() << std::endl;
 			return;
 		}
-
 		errors.Reset();
 		// Create the vertex shader
 		if (FAILED(dev->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, vertexshader.GetAddressOf())))
@@ -86,14 +91,13 @@ public:
 			pVSBlob->Release();
 			return;
 		}
-
 		// Define the input layout
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 		UINT numElements = ARRAYSIZE(layout);
-
 		// Create the input layout
 		if (FAILED(dev->CreateInputLayout(layout, numElements, pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), input.GetAddressOf())))
 		{
@@ -109,7 +113,6 @@ public:
 				L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
 			return;
 		}
-
 		// Create the pixel shader
 		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, pixelshader.GetAddressOf())))
 		{
@@ -121,53 +124,84 @@ public:
 		// Create vertex buffer
 		SimpleVertex vertices[] =
 		{
-			XMFLOAT3(0.0f, 1.0f, 0.5f),
-			XMFLOAT3(1.0f, -1.0f, 0.5f),
-			XMFLOAT3(-1.0f, -1.0f, 0.5f),
+			{ XMFLOAT3(-1.0f, 1.0f, -1.0f),   XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
+			{ XMFLOAT3(1.0f, 1.0f, -1.0f),    XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+			{ XMFLOAT3(1.0f, 1.0f, 1.0f),     XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
+			{ XMFLOAT3(-1.0f, 1.0f, 1.0f),    XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
+			{ XMFLOAT3(-1.0f, -1.0f, -1.0f),  XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
+			{ XMFLOAT3(1.0f, -1.0f, -1.0f),   XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
+			{ XMFLOAT3(1.0f, -1.0f, 1.0f),    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
+			{ XMFLOAT3(-1.0f, -1.0f, 1.0f),   XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
 		};
-
 		D3D11_BUFFER_DESC bd = {};
 		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(SimpleVertex) * 3;
+		bd.ByteWidth = sizeof(SimpleVertex) * 8;
 		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		bd.CPUAccessFlags = 0;
-
 		D3D11_SUBRESOURCE_DATA InitData = {};
 		InitData.pSysMem = vertices;
 		if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
+			return;
+
+		// Create index buffer
+		WORD indices[] =
+		{
+			3,1,0,
+			2,1,3,
+			0,5,4,
+			1,5,0,
+			3,4,7,
+			0,4,3,
+			1,6,5,
+			2,6,1,
+			2,7,6,
+			3,7,2,
+			6,4,5,
+			7,4,6,
+		};
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(WORD) * 36;        // 36 vertices needed for 12 triangles in a triangle list
+		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		bd.CPUAccessFlags = 0;
+		InitData.pSysMem = indices;
+		if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
+			return;
+		// Create the constant buffer
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(ConstantBuffer);
+		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bd.CPUAccessFlags = 0;
+		if (FAILED(dev->CreateBuffer(&bd, nullptr, constantbuffer.GetAddressOf())))
 			return;
 
 		con->Release();
 		dev->Release();
 		return;
 	}
-
-	void Render()
+	void Render(XMMATRIX g_World, XMMATRIX g_View, XMMATRIX g_Projection)
 	{
 		// Render a triangle
 		ID3D11DeviceContext* con;
 		ID3D11RenderTargetView* view;
 		d3d11.GetImmediateContext((void**)&con);
 		d3d11.GetRenderTargetView((void**)&view);
-		// setup the pipeline
-		ID3D11RenderTargetView* const views[] = { view };
-		con->OMSetRenderTargets(ARRAYSIZE(views), views, nullptr);
-		// Set vertex buffer
-		const UINT stride[] = { sizeof(SimpleVertex) };
-		const UINT offset[] = { 0 };
-		ID3D11Buffer* const buffs[] = { vertexbuffer.Get() };
-		con->IASetVertexBuffers(0, ARRAYSIZE(buffs), buffs, stride, offset);
 
+		//Set Index Buffer
+		con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+		ConstantBuffer cb;
+		cb.mWorld = XMMatrixTranspose(g_World);
+		cb.mView = XMMatrixTranspose(g_View);
+		cb.mProjection = XMMatrixTranspose(g_Projection);
+		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 		con->VSSetShader(vertexshader.Get(), nullptr, 0);
+		con->VSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetShader(pixelshader.Get(), nullptr, 0);
 		con->IASetInputLayout(input.Get());
 		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		con->Draw(3, 0);
-
+		con->DrawIndexed(36, 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
 		con->Release();
 		view->Release();
 	}
-private:
 };
 
 class Mesh : DrawClass
@@ -177,6 +211,8 @@ class Mesh : DrawClass
 		XMMATRIX mWorld;
 		XMMATRIX mView;
 		XMMATRIX mProjection;
+		XMFLOAT4 lightDir[2];
+		XMFLOAT4 lightClr[2];
 		XMFLOAT4 vOutputColor;
 	};
 
@@ -186,6 +222,7 @@ class Mesh : DrawClass
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>			input = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>			vertexshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderLights = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				vertexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				indexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				constantbuffer = nullptr;
@@ -194,6 +231,10 @@ class Mesh : DrawClass
 	XMMATRIX											g_World;
 	XMMATRIX											g_View;
 	XMMATRIX											g_Projection;
+
+	bool doFlip = false;
+
+	XMFLOAT4 lightDir[2], lightClr[2];
 
 public:
 	struct SimpleVertex
@@ -325,9 +366,25 @@ public:
 			pPSBlob->Release();
 			return;
 		}
+
+		// Compile the lighting pixel shader
+		pPSBlob = nullptr;
+		if (FAILED(DrawClass::CompileShaderFromFile(L"shaders.fx", "PSSolid", "ps_4_0", &pPSBlob)))
+		{
+			MessageBox(nullptr,
+				L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
+			return;
+		}
+
+		// Create the pixel shader
+		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, pixelshaderLights.GetAddressOf())))
+		{
+			std::cout << (char*)errors->GetBufferPointer() << std::endl;
+			pPSBlob->Release();
+			return;
+		}
 		pPSBlob->Release();
 		
-
 
 		// Create Vertex Buffer
 		D3D11_BUFFER_DESC bd = {};
@@ -400,6 +457,16 @@ public:
 		// Initialize the projection matrix
 		g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, 0.01f, 100.0f);
 
+		// Set-up Lighting Variables
+		{
+			// Directional Lighting
+			lightDir[0] = { -0.577f, 0.577f, -0.577f, 1.0f };
+			lightClr[0] = { 0.5f, 0.5f, 0.5f, 1.0f };
+			// Positional Lighting
+			lightDir[1] = { 0.0f, 0.0f, -1.0f, 1.0f };
+			lightClr[1] = { 0.7f, 0.2f, 0.2f, 1.0f };
+		}
+
 		con->Release();
 		dev->Release();
 		return;
@@ -410,24 +477,55 @@ public:
 		if (mesh == nullptr)
 			return;
 
+		// Update our time
+		static float t = 0.0f;
+
+		static ULONGLONG timeStart = 0;
+		ULONGLONG timeCur = GetTickCount64();
+		if (timeStart == 0)
+			timeStart = timeCur;
+		t = (timeCur - timeStart) / 1500.0f;
+
 		// Render a triangle
 		ID3D11DeviceContext* con;
 		ID3D11RenderTargetView* view;
 		d3d11.GetImmediateContext((void**)&con);
 		d3d11.GetRenderTargetView((void**)&view);
+		
+		// Update poslight for attenuation
+		if (!doFlip)
+		{
+			lightClr[1].x -= t;
+			lightClr[1].y -= t;
+			lightClr[1].z -= t;
 
-		// setup the pipeline
-		//ID3D11RenderTargetView* const views[] = { view };
-		//con->OMSetRenderTargets(ARRAYSIZE(views), views, nullptr);
+			if(!XMVector3Greater({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.01f,0.01f,0.01f }))
+				doFlip = true;
+		}
+		else if (doFlip)
+		{
+			lightClr[1].x += t;
+			lightClr[1].y += t;
+			lightClr[1].z += t;
+
+			if (XMVector3Greater({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.8f, 0.8f, 0.8f }))
+				doFlip = false;
+		}
 
 		con->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
-
+		// Constant Buffer to communicate with the shader's values on the GPU
 		ConstantBuffer cb;
 		cb.mWorld = XMMatrixTranspose(g_World);
 		cb.mView = XMMatrixTranspose(g_View);
 		cb.mProjection = XMMatrixTranspose(g_Projection);
-		cb.vOutputColor = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+		// Directional Light [0]
+		cb.lightDir[0] = lightDir[0];
+		cb.lightClr[0] = lightClr[0];
+		// Point Light [1]
+		cb.lightDir[1] = lightDir[1];
+		cb.lightClr[1] = lightClr[1];
+		cb.vOutputColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
 		// Render the mesh
@@ -439,8 +537,25 @@ public:
 		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
 		con->IASetInputLayout(input.Get());
 		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 		con->DrawIndexed(mesh->indicesList.size(), 0, 0);
+
+		// Render the lighting sources as the model (For now)
+		for (int i = 0; i < 2; i++)
+		{
+			XMMATRIX mLight = XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDir[i]));
+			XMMATRIX mLightScale = XMMatrixScaling(0.2f, 0.2f, 0.2f);
+			mLight = mLightScale * mLight;
+
+			// Update the world variable to reflect the current light
+			cb.mWorld = XMMatrixTranspose(mLight);
+			cb.vOutputColor = lightClr[i];
+			con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
+			con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
+			con->DrawIndexed(mesh->indicesList.size(), 0, 0);
+		}
+
+		timeStart = timeCur;
 
 		con->Release();
 		view->Release();
@@ -485,12 +600,25 @@ public:
 
 			if (diffY < -mouseThreshold)
 			{
+				XMMATRIX oldView = g_View;
+
+				g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+
 				g_View *= XMMatrixRotationX(-0.05f);
+
+				g_View = XMMatrixMultiply(oldView, g_View);
 
 			}
 			else if (diffY > mouseThreshold)
 			{
+				XMMATRIX oldView = g_View;
+
+				g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+				
 				g_View *= XMMatrixRotationX(0.05f);
+
+				g_View = XMMatrixMultiply(oldView, g_View);
+				//g_View *= XMMatrixRotationX(0.05f);
 			}
 
 			//Set it back to the center
