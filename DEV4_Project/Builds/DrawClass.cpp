@@ -5,6 +5,10 @@ DrawClass::DrawClass(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow
 {
 	win = _win;
 	d3d11 = _d3d11;
+
 	+win.GetWidth(width);
 	+win.GetHeight(height);
+
+	+win.GetClientWidth(clientWidth);
+	+win.GetClientHeight(clientHeight);
 }

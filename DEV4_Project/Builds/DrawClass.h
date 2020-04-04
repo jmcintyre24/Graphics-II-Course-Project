@@ -1,10 +1,12 @@
 #pragma once
 #include "defines.h"
+#include "DDSTextureLoader.h"
 
 class DrawClass
 {
 public:
 	DrawClass(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win);
+
 	static HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut)
 	{
 		HRESULT hr = S_OK;
@@ -41,6 +43,7 @@ protected:
 	GW::SYSTEM::GWindow win;
 	GW::GRAPHICS::GDirectX11Surface d3d11;
 	unsigned int width = 0, height = 0;
+	UINT clientWidth = 0, clientHeight = 0;
 private:
 
 };
@@ -167,30 +170,37 @@ public:
 private:
 };
 
-class Cube : DrawClass
+class Mesh : DrawClass
 {
 	struct ConstantBuffer
 	{
 		XMMATRIX mWorld;
 		XMMATRIX mView;
 		XMMATRIX mProjection;
+		XMFLOAT4 vOutputColor;
 	};
 
-	Microsoft::WRL::ComPtr<ID3D11InputLayout>	input = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11VertexShader>	vertexshader = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11PixelShader>	pixelshader = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>		vertexbuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>		indexbuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>		constantbuffer = nullptr;
-	XMMATRIX									g_World;
-	XMMATRIX									g_View;
-	XMMATRIX									g_Projection;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		renderTargetView = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D>				depthStencil = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		depthStencilView = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout>			input = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader>			vertexshader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>				vertexbuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>				indexbuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>				constantbuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	textureRV = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState>			samplerLinear = nullptr;
+	XMMATRIX											g_World;
+	XMMATRIX											g_View;
+	XMMATRIX											g_Projection;
 
 public:
 	struct SimpleVertex
 	{
 		XMFLOAT3 Pos;
-		XMFLOAT4 Color;
+		XMFLOAT3 Normal;
+		XMFLOAT2 UV;
 	};
 
 	struct SimpleMesh
@@ -204,13 +214,66 @@ private:
 
 public:
 
-	Cube(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win, SimpleMesh* _mesh = nullptr) : DrawClass(_d3d11, _win)
+	Mesh(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win, SimpleMesh* _mesh) : DrawClass(_d3d11, _win)
 	{
+		if (_mesh == nullptr)
+		{
+			std::cout << "Mesh was nullptr/Invalid\n";
+		}
+
 		mesh = _mesh;
 		ID3D11Device* dev = nullptr;
 		ID3D11DeviceContext* con = nullptr;
 		+d3d11.GetDevice((void**)&dev);
 		+d3d11.GetImmediateContext((void**)(&con));
+
+		// Back Buffer setup
+		{
+			IDXGISwapChain* swp = nullptr;
+			+d3d11.GetSwapchain((void**)(&swp));
+			// Create a render target view
+			ID3D11Texture2D* pBackBuffer = nullptr;
+			if (FAILED(swp->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer))))
+				return;
+
+			if (FAILED(dev->CreateRenderTargetView(pBackBuffer, nullptr, renderTargetView.GetAddressOf())))
+			{
+				pBackBuffer->Release();
+				return;
+			}
+			pBackBuffer->Release();
+			swp->Release();
+
+			// Create depth stencil texture
+			D3D11_TEXTURE2D_DESC descDepth = {};
+			descDepth.Width = clientWidth;
+			descDepth.Height = clientHeight;
+			descDepth.MipLevels = 1;
+			descDepth.ArraySize = 1;
+			descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+			descDepth.SampleDesc.Count = 1;
+			descDepth.SampleDesc.Quality = 0;
+			descDepth.Usage = D3D11_USAGE_DEFAULT;
+			descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+			descDepth.CPUAccessFlags = 0;
+			descDepth.MiscFlags = 0;
+			if (FAILED(dev->CreateTexture2D(&descDepth, nullptr, depthStencil.GetAddressOf())))
+				return;
+
+			// Create the depth stencil view
+			D3D11_DEPTH_STENCIL_VIEW_DESC descDSV = {};
+			descDSV.Format = descDepth.Format;
+			descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+			descDSV.Texture2D.MipSlice = 0;
+
+			if (FAILED(dev->CreateDepthStencilView(depthStencil.Get(), &descDSV, depthStencilView.GetAddressOf())))
+				return;
+
+			con->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthStencilView.Get());
+
+			// Setup the viewport
+
+		}
 
 		// Compile the vertex shader
 		Microsoft::WRL::ComPtr<ID3DBlob> errors;
@@ -234,7 +297,8 @@ public:
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 		UINT numElements = ARRAYSIZE(layout);
 
@@ -264,88 +328,36 @@ public:
 		pPSBlob->Release();
 		
 
+
+		// Create Vertex Buffer
 		D3D11_BUFFER_DESC bd = {};
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(SimpleVertex) * mesh->vertexList.size();
+		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		bd.CPUAccessFlags = 0;
+
 		D3D11_SUBRESOURCE_DATA InitData = {};
-		// If there's no mesh, render a normal cube.
-		if (mesh == nullptr)
-		{
-			// Create vertex buffer
-			SimpleVertex vertices[] =
-			{
-				{ XMFLOAT3(-1.0f, 1.0f, -1.0f),   XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
-				{ XMFLOAT3(1.0f, 1.0f, -1.0f),    XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-				{ XMFLOAT3(1.0f, 1.0f, 1.0f),     XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
-				{ XMFLOAT3(-1.0f, 1.0f, 1.0f),    XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
+		InitData.pSysMem = mesh->vertexList.data();
+		if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
+			return;
 
-				{ XMFLOAT3(-1.0f, -1.0f, -1.0f),  XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
-				{ XMFLOAT3(1.0f, -1.0f, -1.0f),   XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
-				{ XMFLOAT3(1.0f, -1.0f, 1.0f),    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
-				{ XMFLOAT3(-1.0f, -1.0f, 1.0f),   XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
-			};
+		// Set vertex buffer
+		const UINT stride[] = { sizeof(SimpleVertex) };
+		const UINT offset[] = { 0 };
+		ID3D11Buffer* const buffs[] = { vertexbuffer.Get() };
+		con->IASetVertexBuffers(0, ARRAYSIZE(buffs), buffs, stride, offset);
 
-			bd.Usage = D3D11_USAGE_DEFAULT;
-			bd.ByteWidth = sizeof(SimpleVertex) * 8;
-			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-			bd.CPUAccessFlags = 0;
+		// Create Index Buffer
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(int) * mesh->indicesList.size();
+		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		bd.CPUAccessFlags = 0;
+		InitData.pSysMem = mesh->indicesList.data();
+		if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
+			return;
 
-			InitData.pSysMem = vertices;
-			if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
-				return;
-		}
-		else
-		{
-			bd.Usage = D3D11_USAGE_DEFAULT;
-			bd.ByteWidth = sizeof(SimpleVertex) * mesh->vertexList.size();
-			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-			bd.CPUAccessFlags = 0;
-
-			InitData.pSysMem = mesh->vertexList.data();
-			if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
-				return;
-		}
-
-		if (mesh == nullptr)
-		{
-			// Create index buffer
-			WORD indices[] =
-			{
-				3,1,0,
-				2,1,3,
-
-				0,5,4,
-				1,5,0,
-
-				3,4,7,
-				0,4,3,
-
-				1,6,5,
-				2,6,1,
-
-				2,7,6,
-				3,7,2,
-
-				6,4,5,
-				7,4,6,
-			};
-			bd.Usage = D3D11_USAGE_DEFAULT;
-			bd.ByteWidth = sizeof(WORD) * 36;        // 36 vertices needed for 12 triangles in a triangle list
-			bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-			bd.CPUAccessFlags = 0;
-			InitData.pSysMem = indices;
-			if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
-				return;
-		}
-		else
-		{
-			bd.Usage = D3D11_USAGE_DEFAULT;
-			bd.ByteWidth = sizeof(int) * mesh->indicesList.size();        // 36 vertices needed for 12 triangles in a triangle list
-			bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-			bd.CPUAccessFlags = 0;
-			InitData.pSysMem = mesh->indicesList.data();
-			if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
-				return;
-		}
-
+		// Set Index Buffer
+		con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 		// Create the constant buffer
 		bd.Usage = D3D11_USAGE_DEFAULT;
@@ -354,6 +366,27 @@ public:
 		bd.CPUAccessFlags = 0;
 		if (FAILED(dev->CreateBuffer(&bd, nullptr, constantbuffer.GetAddressOf())))
 			return;
+
+		// LOADING TEXTURE //
+
+		// Load the Texture
+		
+		if (FAILED(CreateDDSTextureFromFile(dev, L"Textures\\StoneHenge.dds", nullptr, textureRV.GetAddressOf())))
+			return;
+
+		// Create the sample state
+		D3D11_SAMPLER_DESC sampDesc = {};
+		sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		sampDesc.MinLOD = 0;
+		sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+		if (FAILED(dev->CreateSamplerState(&sampDesc, samplerLinear.GetAddressOf())))
+			return;
+
+		// ~~~~~~~~~~~ //
 
 		// Initialize the world matrix
 		g_World = XMMatrixIdentity();
@@ -374,40 +407,40 @@ public:
 
 	void Render()
 	{
+		if (mesh == nullptr)
+			return;
+
 		// Render a triangle
 		ID3D11DeviceContext* con;
 		ID3D11RenderTargetView* view;
 		d3d11.GetImmediateContext((void**)&con);
 		d3d11.GetRenderTargetView((void**)&view);
+
 		// setup the pipeline
-		ID3D11RenderTargetView* const views[] = { view };
-		con->OMSetRenderTargets(ARRAYSIZE(views), views, nullptr);
-		// Set vertex buffer
-		const UINT stride[] = { sizeof(SimpleVertex) };
-		const UINT offset[] = { 0 };
-		ID3D11Buffer* const buffs[] = { vertexbuffer.Get() };
-		con->IASetVertexBuffers(0, ARRAYSIZE(buffs), buffs, stride, offset);
-		//Set Index Buffer
-		if(mesh == nullptr)
-			con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R16_UINT, 0); //Set Index Buffer
-		else
-			con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+		//ID3D11RenderTargetView* const views[] = { view };
+		//con->OMSetRenderTargets(ARRAYSIZE(views), views, nullptr);
+
+		con->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
 
 		ConstantBuffer cb;
 		cb.mWorld = XMMatrixTranspose(g_World);
 		cb.mView = XMMatrixTranspose(g_View);
 		cb.mProjection = XMMatrixTranspose(g_Projection);
+		cb.vOutputColor = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
+		// Render the mesh
 		con->VSSetShader(vertexshader.Get(), nullptr, 0);
 		con->VSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetShader(pixelshader.Get(), nullptr, 0);
+		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		con->PSSetShaderResources(0, 1, textureRV.GetAddressOf());
+		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
 		con->IASetInputLayout(input.Get());
 		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		if (mesh == nullptr)
-			con->DrawIndexed(36, 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
-		else
-			con->DrawIndexed(mesh->indicesList.size(), 0, 0);
+
+		con->DrawIndexed(mesh->indicesList.size(), 0, 0);
 
 		con->Release();
 		view->Release();

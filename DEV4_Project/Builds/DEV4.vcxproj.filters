@@ -3,6 +3,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="DrawClass.cpp" />
+    <ClCompile Include="DDSTextureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="E:\DEV4\Graphics-II-Course-Project\DEV4_Project\CMakeGW\CMakeLists.txt" />
@@ -19,6 +20,7 @@
     <ClInclude Include="defines.h" />
     <ClInclude Include="DrawClass.h" />
     <ClInclude Include="StoneHenge.h" />
+    <ClInclude Include="DDSTextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="DEV4_PS.hlsl">
