@@ -1,6 +1,13 @@
 # Graphics-II-Course-Project
 Graphics II Project Repository
 
+## Overview
+This is a DirectX11 rendering API created for Project & Portfolio IV using Gateware libraries. (Which are written & Maintained @ Full Sail University, License's in project.) (*Graphics-II*).  
+CMake(**VER.** *3.16+*) is required to build the project.
+
+***MAIN*** is the newest project itself.  
+***BACKUP*** is an older version that could be potentially broken and will most likely be deleted soon. 
+
 ## Controls:
 - **Holding right click, move mouse** around to look around.
 - **C** travels downwards.
@@ -8,7 +15,7 @@ Graphics II Project Repository
 - **WASD** for general strafing/movement.
 - **Q & E** for rotating the camera quickly left or right.
 - **Z** toggles the ability to move the directional light.
-- **Holding left click (AFTER PRESS Z), dragging** moves the directional light horizontally.
+- **Holding left click (AFTER PRESSING Z), dragging** moves the directional light horizontally.
 
 ## Features (WIP):
 - [x] FPS fly-through style camera
