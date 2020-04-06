@@ -68,5 +68,8 @@ float4 PSSolid(PS_INPUT input) : SV_Target
 
 float4 PSUnique(PS_INPUT input) : SV_Target
 {
-    return vOutputColor;
+    float4 color = 0;
+    color = sin(satuate(color * vLightDir[1]));
+    color.a = 1;
+    return color;
 }
