@@ -59,164 +59,6 @@ protected:
 	UINT clientWidth = 0, clientHeight = 0;
 };
 
-class Cube : DrawClass
-{
-	struct SimpleVertex
-	{
-		XMFLOAT3 Pos;
-		XMFLOAT4 Color;
-	};
-	struct ConstantBuffer
-	{
-		XMMATRIX mWorld;
-		XMMATRIX mView;
-		XMMATRIX mProjection;
-	};
-	Microsoft::WRL::ComPtr<ID3D11InputLayout>	input = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11VertexShader>	vertexshader = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11PixelShader>	pixelshader = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>		vertexbuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>		indexbuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>		constantbuffer = nullptr;
-
-public:
-	Cube(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win) : DrawClass(_d3d11, _win)
-	{
-		ID3D11Device* dev = nullptr;
-		ID3D11DeviceContext* con = nullptr;
-		+d3d11.GetDevice((void**)&dev);
-		+d3d11.GetImmediateContext((void**)(&con));
-		// Compile the vertex shader
-		ID3DBlob* pVSBlob = nullptr;
-		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "VS", "vs_4_0", &pVSBlob)))
-		{
-			DebugBreak();
-			return;
-		}
-
-		// Create the vertex shader
-		if (FAILED(dev->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, vertexshader.GetAddressOf())))
-		{
-			DebugBreak();
-			pVSBlob->Release();
-			return;
-		}
-
-		// Define the input layout
-		D3D11_INPUT_ELEMENT_DESC layout[] =
-		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		};
-		UINT numElements = ARRAYSIZE(layout);
-		// Create the input layout
-		if (FAILED(dev->CreateInputLayout(layout, numElements, pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), input.GetAddressOf())))
-		{
-			DebugBreak();
-			pVSBlob->Release();
-			return;
-		}
-		pVSBlob->Release();
-		// Compile the pixel shader
-		ID3DBlob* pPSBlob = nullptr;
-		if (FAILED(DrawClass::CompileShaderFromFile(L"shaders.fx", "PS", "ps_4_0", &pPSBlob)))
-		{
-			MessageBox(nullptr,
-				L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
-			return;
-		}
-		// Create the pixel shader
-		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, pixelshader.GetAddressOf())))
-		{
-			DebugBreak();
-			pPSBlob->Release();
-			return;
-		}
-		pPSBlob->Release();
-		// Create vertex buffer
-		SimpleVertex vertices[] =
-		{
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f),   XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f),    XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f),     XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f),    XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f),  XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f),   XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f),    XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f),   XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
-		};
-		D3D11_BUFFER_DESC bd = {};
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(SimpleVertex) * 8;
-		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		bd.CPUAccessFlags = 0;
-		D3D11_SUBRESOURCE_DATA InitData = {};
-		InitData.pSysMem = vertices;
-		if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
-			return;
-
-		// Create index buffer
-		WORD indices[] =
-		{
-			3,1,0,
-			2,1,3,
-			0,5,4,
-			1,5,0,
-			3,4,7,
-			0,4,3,
-			1,6,5,
-			2,6,1,
-			2,7,6,
-			3,7,2,
-			6,4,5,
-			7,4,6,
-		};
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(WORD) * 36;        // 36 vertices needed for 12 triangles in a triangle list
-		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		bd.CPUAccessFlags = 0;
-		InitData.pSysMem = indices;
-		if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
-			return;
-		// Create the constant buffer
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(ConstantBuffer);
-		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		bd.CPUAccessFlags = 0;
-		if (FAILED(dev->CreateBuffer(&bd, nullptr, constantbuffer.GetAddressOf())))
-			return;
-
-		con->Release();
-		dev->Release();
-		return;
-	}
-	void Render(XMMATRIX g_World, XMMATRIX g_View, XMMATRIX g_Projection)
-	{
-		// Render a triangle
-		ID3D11DeviceContext* con;
-		ID3D11RenderTargetView* view;
-		d3d11.GetImmediateContext((void**)&con);
-		d3d11.GetRenderTargetView((void**)&view);
-
-		//Set Index Buffer
-		con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-		ConstantBuffer cb;
-		cb.mWorld = XMMatrixTranspose(g_World);
-		cb.mView = XMMatrixTranspose(g_View);
-		cb.mProjection = XMMatrixTranspose(g_Projection);
-		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
-		con->VSSetShader(vertexshader.Get(), nullptr, 0);
-		con->VSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
-		con->PSSetShader(pixelshader.Get(), nullptr, 0);
-		con->IASetInputLayout(input.Get());
-		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		con->DrawIndexed(36, 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
-		con->Release();
-		view->Release();
-	}
-};
-
 class Mesh : DrawClass
 {
 
@@ -243,6 +85,11 @@ private:
 		XMFLOAT4 lightDir[2];
 		XMFLOAT4 lightClr[2];
 		XMFLOAT4 vOutputColor;
+	};
+
+	struct UniqueBuffer
+	{
+		XMFLOAT4 timePos;
 	};
 
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		renderTargetView = nullptr;
@@ -274,7 +121,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				c_vertexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				c_indexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				c_constantbuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>				u_constantbuffer = nullptr;
 
+	// Generate a hard-coded cube. (Will hopefully move this out)
 	void CreateCube(ID3D11Device* dev, ID3D11DeviceContext* con)
 	{
 		// Create vertex buffer
@@ -561,6 +410,17 @@ public:
 			return;
 		}
 
+		// Create the unique constant buffer
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(UniqueBuffer);
+		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		bd.CPUAccessFlags = 0;
+		if (FAILED(dev->CreateBuffer(&bd, nullptr, u_constantbuffer.GetAddressOf())))
+		{
+			DebugBreak();
+			return;
+		}
+
 		// LOADING TEXTURE //
 
 		// Load the Texture
@@ -619,14 +479,25 @@ public:
 		if (mesh == nullptr)
 			return;
 
-		// Update our time
+		// Update time
 		static float t = 0.0f;
+		static float totT = 0.0f;
 
-		static ULONGLONG timeStart = 0;
+		static ULONGLONG timePerFrame = 0, timeStart = 0;
+
 		ULONGLONG timeCur = GetTickCount64();
+		if (timePerFrame == 0)
+			timePerFrame = timeCur;
+		t = (timeCur - timePerFrame) / 1500.0f;
 		if (timeStart == 0)
 			timeStart = timeCur;
-		t = (timeCur - timeStart) / 1500.0f;
+		totT = (timeCur - timeStart) / 1000.0f;
+
+		// To cause a pulse for the Unique Pixel Shader
+		if (totT > 1)
+		{
+			timeStart = timeCur;
+		}
 
 		// Grab the context and view.
 		ID3D11DeviceContext* con;
@@ -634,7 +505,7 @@ public:
 		d3d11.GetImmediateContext((void**)&con);
 		d3d11.GetRenderTargetView((void**)&view);
 		
-		// Update poslight for attenuation
+		// Update the positional light for attenuation
 		if (!doFlip)
 		{
 			lightClr[1].x -= t;
@@ -654,7 +525,7 @@ public:
 				doFlip = false;
 		}
 
-		// Rotate the directional light
+		// Rotate the directional light around the origin
 		if (!moveDirLight)
 		{
 			XMMATRIX mRotate = XMMatrixRotationY(0.5f * t);
@@ -663,12 +534,13 @@ public:
 			XMStoreFloat4(&lightDir[0], vLightDir);
 		}
 
-		// Rotate the second light around the origin
+		// Rotate the positional light around the origin
 		XMMATRIX mRotate = XMMatrixRotationY(-2.0f * t);
 		XMVECTOR vLightDir = XMLoadFloat4(&lightDir[1]);
 		vLightDir = XMVector3Transform(vLightDir, mRotate);
 		XMStoreFloat4(&lightDir[1], vLightDir);
 
+		// Clear the depth stencil view
 		con->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 		// Constant Buffer to communicate with the shader's values on the GPU
@@ -684,6 +556,11 @@ public:
 		cb.lightClr[1] = lightClr[1];
 		cb.vOutputColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
+		// Unique Constant Buffer to communicate for unique PS
+		UniqueBuffer ub;
+		ub.timePos = { totT, lightDir[0].x, lightDir[0].y, lightDir[0].z };
+		con->UpdateSubresource(u_constantbuffer.Get(), 0, nullptr, &ub, 0, 0);
 
 		// Render the mesh
 		// Set vertex buffer
@@ -703,7 +580,7 @@ public:
 		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
 		con->DrawIndexed(mesh->indicesList.size(), 0, 0);
 
-		// Set to Render for Cube now
+		// Render the light sources as cubes (So they are visible)
 		// Set vertex buffer
 		const UINT c_stride[] = { sizeof(SimpleVertex) };
 		const UINT c_offset[] = { 0 };
@@ -725,14 +602,24 @@ public:
 			cb.vOutputColor = lightClr[i];
 			con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
-			if(i == 1)
+			// Positional Light
+			if (i == 1)
+			{
+				// Be sure the constant buffer is still the contsant buffer.
+				con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 				con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
+			}
+			// Directional Light
 			else
+			{
+				// Update PS's constant buffer to unique
+				con->PSSetConstantBuffers(1, 1, u_constantbuffer.GetAddressOf());
 				con->PSSetShader(pixelshaderUnique.Get(), nullptr, 0);
+			}
 			con->DrawIndexed(36, 0, 0);
 		}
 
-		timeStart = timeCur;
+		timePerFrame = timeCur;
 
 		con->Release();
 		view->Release();
@@ -914,133 +801,5 @@ public:
 			};
 			g_View = XMMatrixMultiply(g_View, translate);
 		}
-	}
-};
-
-class TestCube : DrawClass
-{
-private:
-	struct ConstantBuffer
-	{
-		XMMATRIX mWorld;
-		XMFLOAT4 vOutputColor;
-	};
-
-	Microsoft::WRL::ComPtr<ID3D11Buffer>				vertexbuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>				indexbuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>				constantbuffer = nullptr;
-public:
-	TestCube(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win) : DrawClass(_d3d11, _win)
-	{
-		ID3D11Device* dev = nullptr;
-		ID3D11DeviceContext* con = nullptr;
-		+d3d11.GetDevice((void**)&dev);
-		+d3d11.GetImmediateContext((void**)(&con));
-
-		// Create vertex buffer
-		Mesh::SimpleVertex vertices[] =
-		{
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-		};
-		D3D11_BUFFER_DESC bd = {};
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(Mesh::SimpleVertex) * 24;
-		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-		bd.CPUAccessFlags = 0;
-		D3D11_SUBRESOURCE_DATA InitData = {};
-		InitData.pSysMem = vertices;
-		if (FAILED(dev->CreateBuffer(&bd, &InitData, vertexbuffer.GetAddressOf())))
-		{
-			DebugBreak();
-			return;
-		}
-		// Create index buffer
-		unsigned int indices[] =
-		{
-			3,1,0,
-			2,1,3,
-
-			6,4,5,
-			7,4,6,
-
-			11,9,8,
-			10,9,11,
-
-			14,12,13,
-			15,12,14,
-
-			19,17,16,
-			18,17,19,
-
-			22,20,21,
-			23,20,22
-		};
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(unsigned int) * 36;        // 36 vertices needed for 12 triangles in a triangle list
-		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-		bd.CPUAccessFlags = 0;
-		InitData.pSysMem = indices;
-		if (FAILED(dev->CreateBuffer(&bd, &InitData, indexbuffer.GetAddressOf())))
-		{
-			DebugBreak();
-			return;
-		}
-		// Create the constant buffer
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(ConstantBuffer);
-		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		bd.CPUAccessFlags = 0;
-		if (FAILED(dev->CreateBuffer(&bd, nullptr, constantbuffer.GetAddressOf())))
-		{
-			DebugBreak();
-			return;
-		}
-
-		con->Release();
-		dev->Release();
-	}
-
-	// Accessors
-	void GetVertBuffer(ID3D11Buffer* buff)
-	{
-		buff = vertexbuffer.Get();
-	}
-
-	void GetIndexBuffer(ID3D11Buffer* buff)
-	{
-		buff = indexbuffer.Get();
-	}
-
-	void GetConstantBuffer(ID3D11Buffer* buff)
-	{
-		buff = constantbuffer.Get();
 	}
 };

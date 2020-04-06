@@ -25,5 +25,7 @@ CMake(**VER.** *3.16+*) is required to build the project.
 - [x] Point Light on Complex Mesh (With Range Attenuation)
 - [x] Two Different Functional Lights on the same drawn geometry. (Point Light & Directional Lighting)
 - [x] Dynamic Change in direction of directional light & dynamic Change in position of positional light.
+- [x] Normal Mapping on a full 3D complex mesh.
+- [x] Unique Pixel Shader using relative position, time, and a wave. (Sin) Causes whatever it using that pixel shader to pulse and change colors based on the X and Y.
 
 

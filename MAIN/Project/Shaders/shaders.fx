@@ -1,8 +1,8 @@
 // Constant Buffer Variables
-Texture2D txDiffuse : register(t0);
-SamplerState samLinear : register(s0);
+Texture2D txDiffuse : register(t0); // t for shader resource view.
+SamplerState samLinear : register(s0); // s for samplers
 
-cbuffer ConstantBuffer : register(b0)
+cbuffer ConstantBuffer : register(b0) // b for constant buffers
 {
     matrix World;
     matrix View;
@@ -12,6 +12,10 @@ cbuffer ConstantBuffer : register(b0)
     float4 vOutputColor;
 }
 
+cbuffer UniqueBuffer : register(b1)
+{
+    float4 timePos;
+}
 //--------------------------------------------------------------------------------------
 
 struct VS_INPUT
@@ -66,10 +70,12 @@ float4 PSSolid(PS_INPUT input) : SV_Target
     return vOutputColor;
 }
 
+// Color based off of time per frame and the directon of the light..
 float4 PSUnique(PS_INPUT input) : SV_Target
 {
-    float4 color = 0;
-    color = sin(satuate(color * vLightDir[1]));
+    // Create the color using the X position, Y position, and time (up to 1)
+    float4 color = { timePos[1], timePos[2], timePos[0], 1 };
+    color = saturate(sin(color));
     color.a = 1;
     return color;
 }
