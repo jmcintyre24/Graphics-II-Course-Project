@@ -28,6 +28,7 @@ struct VS_INPUT
 struct PS_INPUT
 {
     float4 Pos : SV_POSITION;
+    float4 worldPos : POSITION;
     float3 Norm : NORMAL;
     float2 Tex : TEXCOORD1;
 };
@@ -41,6 +42,7 @@ PS_INPUT VS(VS_INPUT input)
     output.Pos = mul(input.Pos, World);
     output.Pos = mul(output.Pos, View);
     output.Pos = mul(output.Pos, Projection);
+    output.worldPos = mul(input.Pos, World);
     output.Norm = mul(float4(input.Norm, 1), World).xyz;
     output.Tex = input.Tex;
     return output;
@@ -52,11 +54,27 @@ PS_INPUT VS(VS_INPUT input)
 //--------------------------------------------------------------------------------------
 float4 PS(PS_INPUT input) : SV_Target
 {
-    float4 finalColor = 0;
+    float4 finalColor = 0.075f;
     
     for (int i = 0; i < 2; i++)
     {
-        finalColor += saturate(dot((float3) vLightDir[i], input.Norm) * vLightColor[i]);
+        // Directional Lighting
+        if(i == 0)
+        {
+            finalColor += saturate(dot((float3) vLightDir[i], input.Norm) * vLightColor[i]);
+        }
+        // Point Lighting
+        else if (i == 1)
+        {
+            float4 lightDir = normalize(vLightDir[i] - input.worldPos);
+            float distance = length(lightDir);
+            
+            // Apply the point light to the color if within range.
+            if (distance <= 1.5f)
+            {
+                finalColor += saturate(dot((float3) lightDir, input.Norm) * vLightColor[i]);
+            }
+        }
     }
     finalColor *= txDiffuse.Sample(samLinear, input.Tex);
     finalColor.a = 1;
@@ -70,12 +88,18 @@ float4 PSSolid(PS_INPUT input) : SV_Target
     return vOutputColor;
 }
 
-// Color based off of time per frame and the directon of the light..
+// Create a pulsation on the color
 float4 PSUnique(PS_INPUT input) : SV_Target
 {
-    // Create the color using the X position, Y position, and time (up to 1)
-    float4 color = { timePos[1], timePos[2], timePos[0], 1 };
-    color = saturate(sin(color));
+    float4 color = 0;
+    // Create the color using the X position, Z position, and time (timePos[0])
+
+    color.r = saturate(cos(abs(input.worldPos[0]) + abs(input.worldPos[2])));
+    color.r += saturate(cos(abs(input.worldPos[0])));
+    color.g = saturate(cos(abs(input.worldPos[2]) + abs(input.worldPos[0])));
+    color.g += saturate(cos(abs(input.worldPos[2])));
+    color.b = saturate(sin(timePos[0]));
+            
     color.a = 1;
     return color;
 }

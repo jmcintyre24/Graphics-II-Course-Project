@@ -68,7 +68,7 @@ int main()
 		+win.GetWidth(width);
 		+win.GetHeight(height);
 
-		float clr[] = { 0.2f, 0.2f, 0.8f, 1 }; // start with blue
+		float clr[] = { 0.2f, 0.2f, 0.4f, 1 }; // start with blue
 		msgs.Create(win, [&]() {
 			if (+msgs.Find(GWindow::Events::RESIZE, true))
 				{

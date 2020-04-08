@@ -463,10 +463,10 @@ public:
 		{
 			// Directional Lighting
 			lightDir[0] = { -0.577f, 0.577f, -0.577f, 1.0f };
-			lightClr[0] = { 0.85f, 0.85f, 0.85f, 1.0f };
+			lightClr[0] = { 0.5f, 0.5f, 0.5f, 1.0f };
 			// Positional Lighting
 			lightDir[1] = { 0.0f, 0.2f, -1.0f, 1.0f };
-			lightClr[1] = { 0.7f, 0.2f, 0.2f, 1.0f };
+			lightClr[1] = { 0.0f, 0.8f, 0.8f, 1.0f };
 		}
 
 		con->Release();
@@ -505,37 +505,35 @@ public:
 		d3d11.GetImmediateContext((void**)&con);
 		d3d11.GetRenderTargetView((void**)&view);
 		
-		// Update the positional light for attenuation
+		// Update the point light for attenuation
 		if (!doFlip)
 		{
-			lightClr[1].x -= t;
 			lightClr[1].y -= t;
 			lightClr[1].z -= t;
 
-			if(!XMVector3Greater({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.01f,0.01f,0.01f }))
+			if(!XMVector3GreaterOrEqual({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.0f,0.1f,0.1f }))
 				doFlip = true;
 		}
 		else if (doFlip)
 		{
-			lightClr[1].x += t;
 			lightClr[1].y += t;
 			lightClr[1].z += t;
 
-			if (XMVector3Greater({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.8f, 0.8f, 0.8f }))
+			if (XMVector3GreaterOrEqual({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.0f, 0.9f, 0.9f }))
 				doFlip = false;
 		}
 
 		// Rotate the directional light around the origin
 		if (!moveDirLight)
 		{
-			XMMATRIX mRotate = XMMatrixRotationY(0.5f * t);
+			XMMATRIX mRotate = XMMatrixRotationY(0.2f * t);
 			XMVECTOR vLightDir = XMLoadFloat4(&lightDir[0]);
 			vLightDir = XMVector3Transform(vLightDir, mRotate);
 			XMStoreFloat4(&lightDir[0], vLightDir);
 		}
 
 		// Rotate the positional light around the origin
-		XMMATRIX mRotate = XMMatrixRotationY(-2.0f * t);
+		XMMATRIX mRotate = XMMatrixRotationY(-1.0f * t);
 		XMVECTOR vLightDir = XMLoadFloat4(&lightDir[1]);
 		vLightDir = XMVector3Transform(vLightDir, mRotate);
 		XMStoreFloat4(&lightDir[1], vLightDir);
@@ -590,21 +588,21 @@ public:
 		// Set Index Buffer
 		con->IASetIndexBuffer(c_indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
-		// Render the lighting sources as the model (For now)
+		// Render the lighting sources as a cube.
 		for (int i = 0; i < 2; i++)
 		{
-			XMMATRIX mLight = XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDir[i]));
-			XMMATRIX mLightScale = XMMatrixScaling(0.2f, 0.2f, 0.2f);
-			mLight = mLightScale * mLight;
-
-			// Update the world variable to reflect the current light
-			cb.mWorld = XMMatrixTranspose(mLight);
-			cb.vOutputColor = lightClr[i];
-			con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
-
 			// Positional Light
 			if (i == 1)
 			{
+				XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&lightDir[i]));
+				XMMATRIX mLightScale = XMMatrixScaling(0.05f, 0.05f, 0.05f);
+				mLight = mLightScale * mLight;
+
+				// Update the world variable to reflect the current light
+				cb.mWorld = XMMatrixTranspose(mLight);
+				cb.vOutputColor = lightClr[i];
+				con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
 				// Be sure the constant buffer is still the contsant buffer.
 				con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 				con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
@@ -612,6 +610,15 @@ public:
 			// Directional Light
 			else
 			{
+				XMMATRIX mLight = XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDir[i]));
+				XMMATRIX mLightScale = XMMatrixScaling(0.2f, 0.2f, 0.2f);
+				mLight = mLightScale * mLight;
+
+				// Update the world variable to reflect the current light
+				cb.mWorld = XMMatrixTranspose(mLight);
+				cb.vOutputColor = lightClr[i];
+				con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
 				// Update PS's constant buffer to unique
 				con->PSSetConstantBuffers(1, 1, u_constantbuffer.GetAddressOf());
 				con->PSSetShader(pixelshaderUnique.Get(), nullptr, 0);
@@ -665,36 +672,44 @@ public:
 			int diffX = (cosX - cursorPos.x);
 			int diffY = (cosY - cursorPos.y);
 
-			if (diffX < -mouseThreshold)
+			//if (diffX < -mouseThreshold)
+			//{
+			//	g_View *= XMMatrixRotationY(-0.05f);
+			//}
+			//else if (diffX > mouseThreshold)
+			//{
+			//	g_View *= XMMatrixRotationY(0.05f);
+			//}
+
+			//if (diffY < -mouseThreshold)
+			//{
+			//	XMMATRIX oldView = g_View;
+
+			//	g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+
+			//	g_View *= XMMatrixRotationX(-0.05f);
+
+			//	g_View = XMMatrixMultiply(oldView, g_View);
+
+			//}
+			//else if (diffY > mouseThreshold)
+			//{
+			//	XMMATRIX oldView = g_View;
+
+			//	g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+
+			//	g_View *= XMMatrixRotationX(0.05f);
+
+			//	g_View = XMMatrixMultiply(oldView, g_View);
+			//	//g_View *= XMMatrixRotationX(0.05f);
+			//}
+
+			// Block input outside of 125 pixels away from center.
+			if (abs(diffX) < 125 && abs(diffY) < 125)
 			{
-				g_View *= XMMatrixRotationY(-0.05f);
-			}
-			else if (diffX > mouseThreshold)
-			{
-				g_View *= XMMatrixRotationY(0.05f);
-			}
+				XMMATRIX rot = XMMatrixRotationRollPitchYaw(diffY / 150.0f, diffX / 150.0f, 0);
 
-			if (diffY < -mouseThreshold)
-			{
-				XMMATRIX oldView = g_View;
-
-				g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-
-				g_View *= XMMatrixRotationX(-0.05f);
-
-				g_View = XMMatrixMultiply(oldView, g_View);
-
-			}
-			else if (diffY > mouseThreshold)
-			{
-				XMMATRIX oldView = g_View;
-
-				g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-				
-				g_View *= XMMatrixRotationX(0.05f);
-
-				g_View = XMMatrixMultiply(oldView, g_View);
-				//g_View *= XMMatrixRotationX(0.05f);
+				g_View = XMMatrixMultiply(g_View, rot);
 			}
 
 			//Set it back to the center
