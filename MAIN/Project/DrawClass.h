@@ -61,7 +61,6 @@ protected:
 
 class Mesh : DrawClass
 {
-
 public:
 	struct SimpleVertex
 	{
@@ -93,8 +92,6 @@ private:
 	};
 
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		renderTargetView = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Texture2D>				depthStencil = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		depthStencilView = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>			input = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>			vertexshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshader = nullptr;
@@ -120,14 +117,13 @@ private:
 	// For Cube - Will try to move to seperate class once working.
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				c_vertexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				c_indexbuffer = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11Buffer>				c_constantbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				u_constantbuffer = nullptr;
 
 	// Generate a hard-coded cube. (Will hopefully move this out)
 	void CreateCube(ID3D11Device* dev, ID3D11DeviceContext* con)
 	{
 		// Create vertex buffer
-		Mesh::SimpleVertex vertices[] =
+		SimpleVertex vertices[] =
 		{
 			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
 			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
@@ -161,7 +157,7 @@ private:
 		};
 		D3D11_BUFFER_DESC bd = {};
 		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(Mesh::SimpleVertex) * 24;
+		bd.ByteWidth = sizeof(SimpleVertex) * 24;
 		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 		bd.CPUAccessFlags = 0;
 		D3D11_SUBRESOURCE_DATA InitData = {};
@@ -202,16 +198,107 @@ private:
 			DebugBreak();
 			return;
 		}
-		// Create the constant buffer
+		// Create the unique constant buffer
 		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(ConstantBuffer);
+		bd.ByteWidth = sizeof(UniqueBuffer);
 		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 		bd.CPUAccessFlags = 0;
-		if (FAILED(dev->CreateBuffer(&bd, nullptr, c_constantbuffer.GetAddressOf())))
+		if (FAILED(dev->CreateBuffer(&bd, nullptr, u_constantbuffer.GetAddressOf())))
 		{
 			DebugBreak();
 			return;
 		}
+	}
+
+	// For Grid - Same thing as the cube, my end goal would be to move everything out and create a much better pipeline for rendering.
+	Microsoft::WRL::ComPtr<ID3D11Buffer>				g_vertexbuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>				g_indexbuffer = nullptr;
+
+	// Create index buffer
+	std::vector<unsigned int> gridIndices;
+
+	// Generate a proceduraly 3D grid.
+	void CreateGrid(ID3D11Device* dev, ID3D11DeviceContext* con)
+	{
+		// Create vertex buffer
+		std::vector<SimpleVertex> verts;
+
+		for (int z = -50; z < 50; z++)
+		{
+			for (int x = -50; x < 50; x++)
+			{
+				verts.push_back({ XMFLOAT3((x / 50.0f) * 5.0f, 0.0f, (z / 50.0f) * 5.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), });
+			}
+		}
+
+		D3D11_BUFFER_DESC bd = {};
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(SimpleVertex) * verts.size();
+		bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+		bd.CPUAccessFlags = 0;
+		D3D11_SUBRESOURCE_DATA InitData = {};
+		InitData.pSysMem = verts.data();
+		if (FAILED(dev->CreateBuffer(&bd, &InitData, g_vertexbuffer.GetAddressOf())))
+		{
+			DebugBreak();
+			return;
+		}
+
+		// Create Vertical Lines
+		for (int i = 0; i < (verts.size() - 100); i++)
+		{
+			gridIndices.push_back(i);
+			gridIndices.push_back(i + 100);
+		}
+		// Create Horizontal Lines
+		for (int x = 0; x < verts.size(); x += 100)
+		{
+			for (int i = 0; i < 99; i++)
+			{
+				gridIndices.push_back(i + x);
+				gridIndices.push_back(i + 1 + x);
+			}
+		}
+
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.ByteWidth = sizeof(unsigned int) * gridIndices.size();        // 36 vertices needed for 12 triangles in a triangle list
+		bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+		bd.CPUAccessFlags = 0;
+		InitData.pSysMem = gridIndices.data();
+		if (FAILED(dev->CreateBuffer(&bd, &InitData, g_indexbuffer.GetAddressOf())))
+		{
+			DebugBreak();
+			return;
+		}
+	}
+
+	// Render the grid
+	void RenderGrid(ID3D11DeviceContext* con, ID3D11RenderTargetView* view, ConstantBuffer& cb)
+	{
+		// Change Topology to Lines
+		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+		// Set vertex buffer
+		const UINT c_stride[] = { sizeof(SimpleVertex) };
+		const UINT c_offset[] = { 0 };
+		ID3D11Buffer* const c_buffs[] = { g_vertexbuffer.Get() };
+		con->IASetVertexBuffers(0, ARRAYSIZE(c_buffs), c_buffs, c_stride, c_offset);
+
+		// Set Index Buffer
+		con->IASetIndexBuffer(g_indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+		// Update the world variable to reflect the current light
+		XMFLOAT4 pos = { 0.0f, -0.5f, 0.0f, 0.0f };
+		XMMATRIX w_Grid = XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&pos));
+		cb.mWorld = XMMatrixTranspose(w_Grid);
+		cb.vOutputColor = {1.0f, 1.0f, 1.0f, 1.0f};
+		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
+		// Update PS's constant buffer to unique
+		con->PSSetConstantBuffers(1, 1, constantbuffer.GetAddressOf());
+		con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
+	
+		con->DrawIndexed(gridIndices.size(), 0, 0);
 	}
 
 public:
@@ -226,8 +313,10 @@ public:
 		mesh = _mesh;
 		ID3D11Device* dev = nullptr;
 		ID3D11DeviceContext* con = nullptr;
+		ID3D11DepthStencilView* depthview = nullptr;
 		+d3d11.GetDevice((void**)&dev);
 		+d3d11.GetImmediateContext((void**)(&con));
+		+d3d11.GetDepthStencilView((void**)&depthview);
 
 		// Back Buffer setup
 		{
@@ -246,32 +335,8 @@ public:
 			pBackBuffer->Release();
 			swp->Release();
 
-			// Create depth stencil texture
-			D3D11_TEXTURE2D_DESC descDepth = {};
-			descDepth.Width = clientWidth;
-			descDepth.Height = clientHeight;
-			descDepth.MipLevels = 1;
-			descDepth.ArraySize = 1;
-			descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-			descDepth.SampleDesc.Count = 1;
-			descDepth.SampleDesc.Quality = 0;
-			descDepth.Usage = D3D11_USAGE_DEFAULT;
-			descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-			descDepth.CPUAccessFlags = 0;
-			descDepth.MiscFlags = 0;
-			if (FAILED(dev->CreateTexture2D(&descDepth, nullptr, depthStencil.GetAddressOf())))
-				return;
-
-			// Create the depth stencil view
-			D3D11_DEPTH_STENCIL_VIEW_DESC descDSV = {};
-			descDSV.Format = descDepth.Format;
-			descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-			descDSV.Texture2D.MipSlice = 0;
-
-			if (FAILED(dev->CreateDepthStencilView(depthStencil.Get(), &descDSV, depthStencilView.GetAddressOf())))
-				return;
-
-			con->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthStencilView.Get());
+			con->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthview);
+			depthview->Release();
 		}
 
 		// Compile the vertex shader
@@ -364,6 +429,9 @@ public:
 		// Create a cube to store and render later.
 		CreateCube(dev, con);
 
+		// Create the grid
+		CreateGrid(dev, con);
+
 		// Create Vertex Buffer
 		D3D11_BUFFER_DESC bd = {};
 		bd.Usage = D3D11_USAGE_DEFAULT;
@@ -410,17 +478,6 @@ public:
 			return;
 		}
 
-		// Create the unique constant buffer
-		bd.Usage = D3D11_USAGE_DEFAULT;
-		bd.ByteWidth = sizeof(UniqueBuffer);
-		bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-		bd.CPUAccessFlags = 0;
-		if (FAILED(dev->CreateBuffer(&bd, nullptr, u_constantbuffer.GetAddressOf())))
-		{
-			DebugBreak();
-			return;
-		}
-
 		// LOADING TEXTURE //
 
 		// Load the Texture
@@ -457,13 +514,11 @@ public:
 		// Initialize the projection matrix
 		g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, 0.01f, 100.0f);
 
-		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 		// Set-up Lighting Variables
 		{
 			// Directional Lighting
 			lightDir[0] = { -0.577f, 0.577f, -0.577f, 1.0f };
-			lightClr[0] = { 0.5f, 0.5f, 0.5f, 1.0f };
+			lightClr[0] = { 0.6f, 0.6f, 0.6f, 1.0f };
 			// Positional Lighting
 			lightDir[1] = { 0.0f, 0.2f, -1.0f, 1.0f };
 			lightClr[1] = { 0.0f, 0.8f, 0.8f, 1.0f };
@@ -505,6 +560,9 @@ public:
 		d3d11.GetImmediateContext((void**)&con);
 		d3d11.GetRenderTargetView((void**)&view);
 		
+		// Set Primitive Topology
+		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
 		// Update the point light for attenuation
 		if (!doFlip)
 		{
@@ -537,9 +595,6 @@ public:
 		XMVECTOR vLightDir = XMLoadFloat4(&lightDir[1]);
 		vLightDir = XMVector3Transform(vLightDir, mRotate);
 		XMStoreFloat4(&lightDir[1], vLightDir);
-
-		// Clear the depth stencil view
-		con->ClearDepthStencilView(depthStencilView.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 		// Constant Buffer to communicate with the shader's values on the GPU
 		ConstantBuffer cb;
@@ -625,6 +680,10 @@ public:
 			}
 			con->DrawIndexed(36, 0, 0);
 		}
+
+		// Render the Grid
+
+		RenderGrid(con, view, cb);
 
 		timePerFrame = timeCur;
 

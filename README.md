@@ -2,11 +2,15 @@
 Graphics II Project Repository
 
 ## Overview
-This is a DirectX11 rendering API created for Project & Portfolio IV using Gateware libraries. (Which are written & Maintained @ Full Sail University, License's in project.) (*Graphics-II*).  
-CMake(**VER.** *3.16+*) is required to build the project.
+This is a DirectX11 rendering API created for Project & Portfolio IV (*Graphics-II*) using Gateware libraries. (Which are written & Maintained @ Full Sail University, License's in project.).  
+***CMake***(**VER.** *3.16+*) is required to build the project, *though there is an executable in the MAIN\Build folder.*
 
-***MAIN*** is the newest project itself.  
+***MAIN*** is the newest project itself, contains a **BUILD folder with an executable**.  
 ***BACKUP*** is an older version that could be potentially broken and will most likely be deleted soon. 
+
+#### Cubes are used to represent the lights that have been implemented.
+The cube inwards by the center of the mesh is the point light, the cube farthest away from the mesh is the directional light.
+Along with that, the cube that is the directional light has the unique pixel shader applied to it.
 
 ## Controls:
 - **Holding right click, move mouse** around to look around.
@@ -16,16 +20,17 @@ CMake(**VER.** *3.16+*) is required to build the project.
 - **Q & E** for rotating the camera quickly left or right.
 - **Z** toggles the ability to move the directional light.
 - **Holding left click (AFTER PRESSING Z), dragging** moves the directional light horizontally.
+- **J & L** spins the mesh.
 
 ## Features (WIP):
-- [x] FPS fly-through style camera
-- [x] Complex Mesh Loading
+- [x] FPS fly-through style camera *(Borderline)*
+- [x] Complex Mesh Loading with Obj2Header
 - [x] Textures on Complex Mesh
 - [x] Directional Lighting on Complex Mesh
 - [x] Point Light on Complex Mesh (With Range Attenuation)
 - [x] Two Different Functional Lights on the same drawn geometry. (Point Light & Directional Lighting)
 - [x] Dynamic Change in direction of directional light & dynamic Change in position of positional light.
-- [x] Normal Mapping on a full 3D complex mesh.
-- [x] Unique Pixel Shader using relative position, time, and a wave. (Sin) Causes whatever mesh/object that is using that pixel shader to pulse and change colors based on the X, Y, and time.
-
+- [x] Normal Mapping on a full 3D complex mesh. *(Borderline/Unsure if we can use StoneHenge.h from CGS though Lari said we could)*
+- [x] Unique Pixel Shader using relative position, time, and a wave. Causes whatever mesh/object that is using that pixel shader to pulse and change colors based on the X, Z, and time. *(Borderline/Unsure if what I implemented is what you're looking for. [Cause I saw in the screenshots you sent on Discord it has actual waves, though on the Rubric it ask to be creative and use position, time, and a wave (sin, cos, etc.) for a pixel shader (PS_SHADER).])*
+- [x] Proceduarly Generated 3D Grid.
 

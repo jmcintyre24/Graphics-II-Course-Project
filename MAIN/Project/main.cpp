@@ -54,7 +54,8 @@ void PrintInstructions()
 		<< "WASD - General Camera Movement\n"
 		<< "C - Travel Downwards\n"
 		<< "SPACE - Travel Upwards\n"
-		<< "Q\E - Quickly turn left and right\n"
+		<< "Q\\E - Quickly turn left and right\n"
+		<< "J\\L - Spins the mesh\n"
 		<< "~~~~~~~~~~ERRORS BELOW THIS LINE~~~~~~~~~~\n\n";
 }
 
@@ -77,7 +78,8 @@ int main()
 					clr[0] += 0.01f; // move towards a cyan as they resize
 				}
 			});
-		if (+d3d11.Create(win, 0))
+
+		if (+d3d11.Create(win, DEPTH_BUFFER_SUPPORT))
 		{
 			Mesh::SimpleMesh mesh;
 
@@ -91,19 +93,23 @@ int main()
 				IDXGISwapChain* swap = nullptr;
 				ID3D11DeviceContext* con = nullptr;
 				ID3D11RenderTargetView* view = nullptr;
+				ID3D11DepthStencilView* depthview = nullptr;
 
 				if (+d3d11.GetImmediateContext((void**)&con) &&
 					+d3d11.GetRenderTargetView((void**)&view) &&
-					+d3d11.GetSwapchain((void**)&swap))
+					+d3d11.GetSwapchain((void**)&swap) &&
+					+d3d11.GetDepthStencilView((void**)&depthview))
 				{
 					con->ClearRenderTargetView(view, clr);
-
+					// Clear the depth stencil view
+					con->ClearDepthStencilView(depthview, D3D11_CLEAR_DEPTH, 1.0f, 0);
 					stoneHenge.UserInput();
 					stoneHenge.Render();
 					
 					swap->Present(1, 0);
 					con->Release();
 					view->Release();
+					depthview->Release();
 					swap->Release();
 				}
 			}
