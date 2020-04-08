@@ -5,7 +5,7 @@ Graphics II Project Repository
 This is a DirectX11 rendering API created for Project & Portfolio IV (*Graphics-II*) using Gateware libraries. (Which are written & Maintained @ Full Sail University, License's in project.).  
 ***CMake***(**VER.** *3.16+*) is required to build the project, *though there is an executable in the MAIN\Build folder.*
 
-***MAIN*** is the newest project itself, contains a **BUILD folder with an executable**.  
+***MAIN*** is the newest project itself, contains a **BUILD folder with two executables (With normal mapping or without normal mapping.)**. [The Build\README.txt reiterates what's stated here!]  
 ***BACKUP*** is an older version that could be potentially broken and will most likely be deleted soon. 
 
 #### Cubes are used to represent the lights that have been implemented.
@@ -30,7 +30,7 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Point Light on Complex Mesh (With Range Attenuation)
 - [x] Two Different Functional Lights on the same drawn geometry. (Point Light & Directional Lighting)
 - [x] Dynamic Change in direction of directional light & dynamic Change in position of positional light.
-- [x] Normal Mapping on a full 3D complex mesh. *(Borderline/Unsure if we can use StoneHenge.h from CGS though Lari said we could)*
+- [x] Normal Mapping on a full 3D complex mesh. *(Borderline/Unsure if we can use StoneHenge.h from CGS though Lari said we could, I grabbed the texture and made a normal map from it.)*
 - [x] Unique Pixel Shader using relative position, time, and a wave. Causes whatever mesh/object that is using that pixel shader to pulse and change colors based on the X, Z, and time. *(Borderline/Unsure if what I implemented is what you're looking for. [Cause I saw in the screenshots you sent on Discord it has actual waves, though on the Rubric it ask to be creative and use position, time, and a wave (sin, cos, etc.) for a pixel shader (PS_SHADER).])*
 - [x] Proceduarly Generated 3D Grid.
 

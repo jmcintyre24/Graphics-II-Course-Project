@@ -10,6 +10,7 @@ add_executable (Project main.cpp DDSTextureLoader.cpp DDSTextureLoader.h defines
 target_link_libraries(Project d3d11.lib d3dcompiler.lib)
 
 file(COPY ".\\Textures\\StoneHenge.dds" DESTINATION Textures)
+file(COPY ".\\Textures\\StoneHengeNM.dds" DESTINATION Textures)
 file(COPY ".\\Shaders\\shaders.fx" DESTINATION Shaders)
 file(COPY ".\\Shaders\\DEV4_PS.hlsl" DESTINATION Shaders)
 file(COPY ".\\Shaders\\DEV4_VS.hlsl" DESTINATION Shaders)

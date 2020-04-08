@@ -61,20 +61,20 @@ float4 PS(PS_INPUT input) : SV_Target
     float4 finalColor = 0.075f;
         
     // Normal Map
-    if (abs(input.Norm[0]) > 0)
-    {
-        float4 normMap = nrmMap.Sample(samLinear, input.Tex);
+    //if (abs(input.Norm[0]) > 0)
+    //{
+    //    float4 normMap = nrmMap.Sample(samLinear, input.Tex);
         
-        normMap = (2.0f * normMap) - 1.0f;
+    //    normMap = (2.0f * normMap) - 1.0f;
         
-        input.Tang = normalize(input.Tang - dot(input.Tang, input.Norm) * input.Norm);
+    //    input.Tang = normalize(input.Tang - dot(input.Tang, input.Norm) * input.Norm);
         
-        float3 tan = cross(input.Norm, input.Tang);
+    //    float3 tan = cross(input.Norm, input.Tang);
         
-        float3x3 texSpace = float3x3(input.Tang, tan, input.Norm);
+    //    float3x3 texSpace = float3x3(input.Tang, tan, input.Norm);
         
-        input.Norm = normalize(mul(normMap, texSpace));
-    }
+    //    input.Norm = normalize(mul(normMap, texSpace));
+    //}
     
     
     // Apply Lighting

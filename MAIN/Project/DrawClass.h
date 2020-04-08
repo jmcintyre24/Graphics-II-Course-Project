@@ -84,6 +84,7 @@ private:
 		XMFLOAT4 lightDir[2];
 		XMFLOAT4 lightClr[2];
 		XMFLOAT4 vOutputColor;
+		bool doNormMap;
 	};
 
 	struct UniqueBuffer
@@ -101,6 +102,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				indexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				constantbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	textureRV = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	normRV = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11SamplerState>			samplerLinear = nullptr;
 	XMMATRIX											g_World;
 	XMMATRIX											g_View;
@@ -295,7 +297,7 @@ private:
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
 		// Update PS's constant buffer to unique
-		con->PSSetConstantBuffers(1, 1, constantbuffer.GetAddressOf());
+		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
 	
 		con->DrawIndexed(gridIndices.size(), 0, 0);
@@ -303,7 +305,7 @@ private:
 
 public:
 
-	Mesh(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win, SimpleMesh* _mesh, const wchar_t* texturePath) : DrawClass(_d3d11, _win)
+	Mesh(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win, SimpleMesh* _mesh, const wchar_t* texturePath, const wchar_t* normPath) : DrawClass(_d3d11, _win)
 	{
 		if (_mesh == nullptr)
 		{
@@ -488,6 +490,13 @@ public:
 			return;
 		}
 
+		// Load Normal Map
+		if (FAILED(CreateDDSTextureFromFile(dev, normPath, nullptr, normRV.GetAddressOf())))
+		{
+			DebugBreak();
+			return;
+		}
+
 		// Create the sample state
 		D3D11_SAMPLER_DESC sampDesc = {};
 		sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
@@ -612,7 +621,7 @@ public:
 
 		// Unique Constant Buffer to communicate for unique PS
 		UniqueBuffer ub;
-		ub.timePos = { totT, lightDir[0].x, lightDir[0].y, lightDir[0].z };
+		ub.timePos = { totT, 0, 0, 0};
 		con->UpdateSubresource(u_constantbuffer.Get(), 0, nullptr, &ub, 0, 0);
 
 		// Render the mesh
@@ -630,6 +639,7 @@ public:
 		con->PSSetShader(pixelshader.Get(), nullptr, 0);
 		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetShaderResources(0, 1, textureRV.GetAddressOf());
+		con->PSSetShaderResources(1, 1, normRV.GetAddressOf());
 		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
 		con->DrawIndexed(mesh->indicesList.size(), 0, 0);
 
@@ -715,6 +725,20 @@ public:
 			moveDirLight = !moveDirLight;
 			ghostProtect = false;
 		}
+
+		// Toggle the normal mapping in the Pixel Shader
+		//if ((GetKeyState('M') & 0x8000) && ghostProtectNorm == false)
+		//{
+		//	ghostProtectNorm = true;
+		//	doNormMapping = !doNormMapping;
+		//	std::cout << "Norm Map: " << doNormMapping << '\n';
+		//}
+		//else if ((GetKeyState('M') == 0x0000) && ghostProtectNorm == true)
+		//{
+		//	doNormMapping = !doNormMapping;
+		//	ghostProtectNorm = false;
+		//	std::cout << "Norm Map: " << doNormMapping << '\n';
+		//}
 
 		// Look around movement
 		if ((GetKeyState(VK_RBUTTON) & 0x100) != 0)

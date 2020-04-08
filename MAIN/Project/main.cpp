@@ -87,7 +87,7 @@ int main()
 			ReadModel(mesh);
 
 			//Triangle tri(d3d11, win);
-			Mesh stoneHenge(d3d11, win, &mesh, L"Textures\\StoneHenge.dds");
+			Mesh stoneHenge(d3d11, win, &mesh, L"Textures\\StoneHenge.dds", L"Textures\\StoneHengeNM.dds");
 			while (+win.ProcessWindowEvents())
 			{
 				IDXGISwapChain* swap = nullptr;
