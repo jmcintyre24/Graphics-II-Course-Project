@@ -23,14 +23,17 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - **J & L** spins the mesh.
 
 ## Features (WIP):
-- [x] FPS fly-through style camera *(Borderline)*
+- [x] Stabilized FPS fly-through style camera <--- Fixed Stabilization Issue
 - [x] Complex Mesh Loading with Obj2Header
 - [x] Textures on Complex Mesh
 - [x] Directional Lighting on Complex Mesh
 - [x] Point Light on Complex Mesh (With Range Attenuation)
 - [x] Two Different Functional Lights on the same drawn geometry. (Point Light & Directional Lighting)
 - [x] Dynamic Change in direction of directional light & dynamic Change in position of positional light.
-- [x] Normal Mapping on a full 3D complex mesh. *(Borderline/Unsure if we can use StoneHenge.h from CGS though Lari said we could, I grabbed the texture and made a normal map from it.)*
-- [x] Unique Pixel Shader using relative position, time, and a wave. Causes whatever mesh/object that is using that pixel shader to pulse and change colors based on the X, Z, and time. *(Borderline/Unsure if what I implemented is what you're looking for. [Cause I saw in the screenshots you sent on Discord it has actual waves, though on the Rubric it ask to be creative and use position, time, and a wave (sin, cos, etc.) for a pixel shader (PS_SHADER).])*
+- [x] Normal Mapping on a full 3D complex mesh [StoneHenge].
+- [x] Unique Pixel Shader using relative position, time, and a wave. Causes whatever mesh/object that is using that pixel shader to pulse and change colors based on the X, Z, and time.
 - [x] Proceduarly Generated 3D Grid.
+- [ ] Infinite Skybox
+- [
+
 

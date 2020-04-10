@@ -520,6 +520,9 @@ public:
 		XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 		g_View = XMMatrixLookAtLH(Eye, At, Up);
 
+		XMVECTOR det;
+		g_View = XMMatrixInverse(&det, g_View);
+
 		// Initialize the projection matrix
 		g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, 0.01f, 100.0f);
 
@@ -608,7 +611,8 @@ public:
 		// Constant Buffer to communicate with the shader's values on the GPU
 		ConstantBuffer cb;
 		cb.mWorld = XMMatrixTranspose(g_World);
-		cb.mView = XMMatrixTranspose(g_View);
+		XMVECTOR det;
+		cb.mView = XMMatrixTranspose(XMMatrixInverse(&det, g_View));
 		cb.mProjection = XMMatrixTranspose(g_Projection);
 		// Directional Light [0]
 		cb.lightDir[0] = lightDir[0];
@@ -772,7 +776,7 @@ public:
 
 			//	g_View *= XMMatrixRotationX(-0.05f);
 
-			//	g_View = XMMatrixMultiply(oldView, g_View);
+			//	g_View = XMMatrixMultiply(g_View, oldView);
 
 			//}
 			//else if (diffY > mouseThreshold)
@@ -782,18 +786,108 @@ public:
 			//	g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
 
 			//	g_View *= XMMatrixRotationX(0.05f);
+			//	XMVECTOR pos = oldView.r[3];
+			//	g_View = XMMatrixMultiply(g_View, oldView);
 
-			//	g_View = XMMatrixMultiply(oldView, g_View);
-			//	//g_View *= XMMatrixRotationX(0.05f);
+			//	XMMATRIX newView = {
+			//		XMVectorGetX(g_View.r[0]), XMVectorGetY(g_View.r[0]), XMVectorGetZ(g_View.r[0]), XMVectorGetW(g_View.r[0]),
+			//		XMVectorGetX(g_View.r[1]), XMVectorGetY(g_View.r[1]), XMVectorGetZ(g_View.r[1]), XMVectorGetW(g_View.r[1]),
+			//		XMVectorGetX(g_View.r[2]), XMVectorGetY(g_View.r[2]), XMVectorGetZ(g_View.r[2]), XMVectorGetW(g_View.r[2]),
+			//		XMVectorGetX(pos), XMVectorGetY(pos), XMVectorGetZ(pos), XMVectorGetW(pos),
+			//	};
+
+			//	g_View = newView;
+
+			//	// g_View *= XMMatrixRotationX(0.05f);
 			//}
 
 			// Block input outside of 125 pixels away from center.
 			if (abs(diffX) < 125 && abs(diffY) < 125)
 			{
-				XMMATRIX rot = XMMatrixRotationRollPitchYaw(diffY / 150.0f, diffX / 150.0f, 0);
+				// Get angle from fwd vector to 
+				XMVECTOR fwd = XMVector3Cross(g_World.r[0], g_View.r[1]);
+				fwd = XMVector3Normalize(fwd);
+				XMVECTOR vec = XMVector3AngleBetweenNormals(g_World.r[1], fwd);
+				vec = XMVectorMultiply(vec, { 180 / 3.14f, 180 / 3.14f, 180 / 3.14f });
 
-				g_View = XMMatrixMultiply(g_View, rot);
+				// std::cout << XMVectorGetX(vec) << '\n';
+
+				// Make sure the camera isn't looking straight down or upwards
+				if (XMVectorGetX(vec) > 10.0f && XMVectorGetX(vec) < 170.0f)
+				{
+					// Create the rotation matrix based on mouse input.
+					XMMATRIX rot = XMMatrixRotationRollPitchYaw(-diffY / 150.0f, -diffX / 150.0f, 0);
+
+					g_View = XMMatrixMultiply(rot, g_View);
+
+					XMVECTOR vExistingZ = g_View.r[2];
+					// Parallel to the world's horizon 
+					XMVECTOR vNewX = XMVector3Cross(g_World.r[1], vExistingZ);
+					XMVECTOR vNewY = XMVector3Cross(vExistingZ, vNewX);
+					vExistingZ = XMVector3Normalize(vExistingZ);
+					vNewY = XMVector3Normalize(vNewY);
+					vNewX = XMVector3Normalize(vNewX);
+
+					XMMATRIX newView = {
+						XMVectorGetX(vNewX), XMVectorGetY(vNewX), XMVectorGetZ(vNewX), XMVectorGetW(g_View.r[0]),
+						XMVectorGetX(vNewY), XMVectorGetY(vNewY), XMVectorGetZ(vNewY), XMVectorGetW(g_View.r[1]),
+						XMVectorGetX(vExistingZ), XMVectorGetY(vExistingZ), XMVectorGetZ(vExistingZ), XMVectorGetW(g_View.r[2]),
+						XMVectorGetX(g_View.r[3]), XMVectorGetY(g_View.r[3]), XMVectorGetZ(g_View.r[3]), XMVectorGetW(g_View.r[3])
+					};
+
+					g_View = newView;
+				}
+				// Just do X-Rotation
+				else
+				{
+					// Create the rotation matrix based on mouse input.
+					XMMATRIX rot = XMMatrixRotationRollPitchYaw(diffY / 125.0f, 0, diffX / 125.0f);
+
+					g_View = XMMatrixMultiply(rot, g_View);
+
+					//XMVECTOR vExistingZ = g_View.r[2];
+					//// Parallel to the world's horizon 
+					//XMVECTOR vNewX = XMVector3Cross(g_World.r[1], vExistingZ);
+					//XMVECTOR vNewY = XMVector3Cross(vExistingZ, vNewX);
+					//vExistingZ = XMVector3Normalize(vExistingZ);
+					//vNewY = XMVector3Normalize(vNewY);
+					//vNewX = XMVector3Normalize(vNewX);
+
+					//XMMATRIX newView = {
+					//	XMVectorGetX(vNewX), XMVectorGetY(vNewX), XMVectorGetZ(vNewX), XMVectorGetW(g_View.r[0]),
+					//	XMVectorGetX(vNewY), XMVectorGetY(vNewY), XMVectorGetZ(vNewY), XMVectorGetW(g_View.r[1]),
+					//	XMVectorGetX(vExistingZ), XMVectorGetY(vExistingZ), XMVectorGetZ(vExistingZ), XMVectorGetW(g_View.r[2]),
+					//	XMVectorGetX(g_View.r[3]), XMVectorGetY(g_View.r[3]), XMVectorGetZ(g_View.r[3]), XMVectorGetW(g_View.r[3])
+					//};
+
+					//g_View = newView;
+				}
 			}
+
+			// Block input outside of 125 pixels away from center.
+			//if (abs(diffX) < 125 && abs(diffY) < 125)
+			//{
+			//	XMMATRIX rotX = XMMatrixRotationY(diffX / 150.0f);
+			//	XMMATRIX rotY = XMMatrixRotationX(diffY / 150.0f);
+
+			//	g_View = XMMatrixMultiply(g_View, rotX);
+			//	// Save W axis before rotation
+			//	XMVECTOR pos = g_View.r[3];
+			//	g_View = XMMatrixMultiply(rotY, g_View);
+			//	//XMVECTOR pos = { 1, 1, 1 };
+			//	// Apply old W axis to prevent translation from rotations^
+			//	XMMATRIX newView = {
+			//		XMVectorGetX(g_View.r[0]), XMVectorGetY(g_View.r[0]), XMVectorGetZ(g_View.r[0]), XMVectorGetW(g_View.r[0]),
+			//		XMVectorGetX(g_View.r[1]), XMVectorGetY(g_View.r[1]), XMVectorGetZ(g_View.r[1]), XMVectorGetW(g_View.r[1]),
+			//		XMVectorGetX(g_View.r[2]), XMVectorGetY(g_View.r[2]), XMVectorGetZ(g_View.r[2]), XMVectorGetW(g_View.r[2]),
+			//		XMVectorGetX(pos), XMVectorGetY(pos), XMVectorGetZ(pos), XMVectorGetW(g_View.r[3]),
+			//	};
+
+
+			//	g_View = newView;
+
+			//	//XMVectorGetW(newX, g_View.r[0]);
+			//}
 
 			//Set it back to the center
 			SetCursorPos(cosX, cosY);
@@ -830,9 +924,9 @@ public:
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
-			0, 0, -0.1f, 1
+			0, 0, 0.1f, 1
 			};
-			g_View = XMMatrixMultiply(g_View, translate);
+			g_View = XMMatrixMultiply(translate, g_View);
 		}
 
 		if (GetAsyncKeyState('S'))
@@ -841,9 +935,9 @@ public:
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
-			0, 0, 0.1f, 1
+			0, 0, -0.1f, 1
 			};
-			g_View = XMMatrixMultiply(g_View, translate);
+			g_View = XMMatrixMultiply(translate, g_View);
 		}
 
 		if (GetAsyncKeyState('A'))
@@ -852,9 +946,9 @@ public:
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
-			0.1f, 0, 0, 1
+			-0.1f, 0, 0, 1
 			};
-			g_View = XMMatrixMultiply(g_View, translate);
+			g_View = XMMatrixMultiply(translate, g_View);
 		}
 
 		if (GetAsyncKeyState('D'))
@@ -863,9 +957,9 @@ public:
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
-			-0.1f, 0, 0, 1
+			0.1f, 0, 0, 1
 			};
-			g_View = XMMatrixMultiply(g_View, translate);
+			g_View = XMMatrixMultiply(translate, g_View);
 		}
 
 		if (GetAsyncKeyState('Q'))
@@ -884,7 +978,7 @@ public:
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
-			0, -0.1f, 0, 1
+			0, 0.1f, 0, 1
 			};
 			g_View = XMMatrixMultiply(g_View, translate);
 		}
@@ -895,7 +989,7 @@ public:
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
-			0, 0.1f, 0, 1
+			0, -0.1f, 0, 1
 			};
 			g_View = XMMatrixMultiply(g_View, translate);
 		}
