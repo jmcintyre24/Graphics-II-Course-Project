@@ -844,23 +844,6 @@ public:
 					XMMATRIX rot = XMMatrixRotationRollPitchYaw(diffY / 125.0f, 0, diffX / 125.0f);
 
 					g_View = XMMatrixMultiply(rot, g_View);
-
-					//XMVECTOR vExistingZ = g_View.r[2];
-					//// Parallel to the world's horizon 
-					//XMVECTOR vNewX = XMVector3Cross(g_World.r[1], vExistingZ);
-					//XMVECTOR vNewY = XMVector3Cross(vExistingZ, vNewX);
-					//vExistingZ = XMVector3Normalize(vExistingZ);
-					//vNewY = XMVector3Normalize(vNewY);
-					//vNewX = XMVector3Normalize(vNewX);
-
-					//XMMATRIX newView = {
-					//	XMVectorGetX(vNewX), XMVectorGetY(vNewX), XMVectorGetZ(vNewX), XMVectorGetW(g_View.r[0]),
-					//	XMVectorGetX(vNewY), XMVectorGetY(vNewY), XMVectorGetZ(vNewY), XMVectorGetW(g_View.r[1]),
-					//	XMVectorGetX(vExistingZ), XMVectorGetY(vExistingZ), XMVectorGetZ(vExistingZ), XMVectorGetW(g_View.r[2]),
-					//	XMVectorGetX(g_View.r[3]), XMVectorGetY(g_View.r[3]), XMVectorGetZ(g_View.r[3]), XMVectorGetW(g_View.r[3])
-					//};
-
-					//g_View = newView;
 				}
 			}
 
