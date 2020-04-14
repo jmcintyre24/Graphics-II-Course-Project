@@ -2,6 +2,7 @@
 Texture2D txDiffuse : register(t0); // t for shader resource view.
 Texture2D nrmMap : register(t1); // t for shader resource view.
 SamplerState samLinear : register(s0); // s for samplers
+TextureCube skybox;
 
 cbuffer ConstantBuffer : register(b0) // b for constant buffers
 {
@@ -35,6 +36,13 @@ struct PS_INPUT
     float2 Tex : TEXCOORD1;
 };
 
+struct SKYBOX_VS_INPUT
+{
+    float4 Pos : POSITION;
+    float3 Norm : NORMAL;
+    float3 Tex : TEXCOORD0;
+};
+
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
@@ -51,6 +59,13 @@ PS_INPUT VS(VS_INPUT input)
     return output;
 }
 
+SKYBOX_VS_INPUT SKYBOX_VS(SKYBOX_VS_INPUT input)
+{
+    input.Pos = mul(float4(input.Pos.x, input.Pos.y, input.Pos.z, 1.0f), World).xyww;
+    
+    input.Tex = input.Pos;
+    return input;
+}
 
 //--------------------------------------------------------------------------------------
 // Pixel Shaders
@@ -111,7 +126,7 @@ float4 PSSolid(PS_INPUT input) : SV_Target
     return vOutputColor;
 }
 
-// Create a pulsation on the color
+// Create a pulsation on the color w/ color change on position.
 float4 PSUnique(PS_INPUT input) : SV_Target
 {
     float4 color = 0;
@@ -125,4 +140,10 @@ float4 PSUnique(PS_INPUT input) : SV_Target
             
     color.a = 1;
     return color;
+}
+
+// SKYBOX PS
+float4 SKYBOX_PS(SKYBOX_VS_INPUT input) : SV_Target
+{
+    return skybox.Sample(samLinear, (float3) input.Tex);
 }

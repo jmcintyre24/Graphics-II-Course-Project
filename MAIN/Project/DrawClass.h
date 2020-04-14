@@ -303,6 +303,9 @@ private:
 		con->DrawIndexed(gridIndices.size(), 0, 0);
 	}
 
+	// For Skybox Generation
+	Microsoft::WRL::ComPtr<ID3D11VertexShader>			SKBvertexshader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>			SKBpixelshader = nullptr;
 public:
 
 	Mesh(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win, SimpleMesh* _mesh, const wchar_t* texturePath, const wchar_t* normPath) : DrawClass(_d3d11, _win)
@@ -357,6 +360,23 @@ public:
 			return;
 		}
 
+		// Skybox VS
+		// Compile the Skybox vertex shader
+		pVSBlob = nullptr;
+		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "SKYBOX_VS", "vs_4_0", &pVSBlob)))
+		{
+			DebugBreak();
+			return;
+		}
+
+		// Create the Skybox vertex shader
+		if (FAILED(dev->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, SKBvertexshader.GetAddressOf())))
+		{
+			DebugBreak();
+			pVSBlob->Release();
+			return;
+		}
+
 		// Define the input layout
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{
@@ -377,7 +397,7 @@ public:
 
 		con->IASetInputLayout(input.Get());
 		
-		// Compile the pixel shader
+		// Compile the pixel shaders
 		ID3DBlob* pPSBlob = nullptr;
 		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "PS", "ps_4_0", &pPSBlob)))
 		{
@@ -409,7 +429,7 @@ public:
 			return;
 		}
 
-		// Compile the lighting pixel shader
+		// Compile the unique lighting pixel shader
 		pPSBlob = nullptr;
 		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "PSUnique", "ps_4_0", &pPSBlob)))
 		{
@@ -419,7 +439,7 @@ public:
 			return;
 		}
 
-		// Create the pixel shader
+		// Create the unique pixel shader
 		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, pixelshaderUnique.GetAddressOf())))
 		{
 			pPSBlob->Release();
@@ -428,6 +448,25 @@ public:
 		}
 		pPSBlob->Release();
 		
+		//Compile skybox pixel shader
+		pPSBlob = nullptr;
+		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "SKYBOX_PS", "ps_4_0", &pPSBlob)))
+		{
+			MessageBox(nullptr,
+				L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
+			DebugBreak();
+			return;
+		}
+
+		// Create skybox pixel shader
+		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, SKBpixelshader.GetAddressOf())))
+		{
+			pPSBlob->Release();
+			DebugBreak();
+			return;
+		}
+		pPSBlob->Release();
+
 		// Create a cube to store and render later.
 		CreateCube(dev, con);
 
