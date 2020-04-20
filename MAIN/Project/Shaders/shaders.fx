@@ -2,7 +2,7 @@
 Texture2D txDiffuse : register(t0); // t for shader resource view.
 Texture2D nrmMap : register(t1); // t for shader resource view.
 SamplerState samLinear : register(s0); // s for samplers
-TextureCube skybox;
+TextureCube skybox : register(t2);
 
 cbuffer ConstantBuffer : register(b0) // b for constant buffers
 {
@@ -38,7 +38,7 @@ struct PS_INPUT
 
 struct SKYBOX_VS_INPUT
 {
-    float4 Pos : POSITION;
+    float4 Pos : SV_POSITION;
     float3 Norm : NORMAL;
     float3 Tex : TEXCOORD0;
 };
@@ -61,10 +61,11 @@ PS_INPUT VS(VS_INPUT input)
 
 SKYBOX_VS_INPUT SKYBOX_VS(SKYBOX_VS_INPUT input)
 {
-    input.Pos = mul(float4(input.Pos.x, input.Pos.y, input.Pos.z, 1.0f), World).xyww;
+    SKYBOX_VS_INPUT output = (SKYBOX_VS_INPUT) 0;
+    output.Pos = mul(float4(input.Pos.x, input.Pos.y, input.Pos.z, 1.0f), World).xyww;
     
-    input.Tex = input.Pos;
-    return input;
+    output.Tex = input.Pos;
+    return output;
 }
 
 //--------------------------------------------------------------------------------------
@@ -144,6 +145,10 @@ float4 PSUnique(PS_INPUT input) : SV_Target
 
 // SKYBOX PS
 float4 SKYBOX_PS(SKYBOX_VS_INPUT input) : SV_Target
-{
-    return skybox.Sample(samLinear, (float3) input.Tex);
+{    
+    //finalColor *= txDiffuse.Sample(samLinear, input.Tex);
+    
+    //return finalColor;
+    return vOutputColor * skybox.Sample(samLinear, input.Tex);
+    //return vOutputColor;
 }

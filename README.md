@@ -33,7 +33,6 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Normal Mapping on a full 3D complex mesh [StoneHenge].
 - [x] Unique Pixel Shader using relative position, time, and a wave. Causes whatever mesh/object that is using that pixel shader to pulse and change colors based on the X, Z, and time.
 - [x] Proceduarly Generated 3D Grid.
-- [ ] Infinite Skybox
-- [
+- [x] Infinite Skybox
 
 

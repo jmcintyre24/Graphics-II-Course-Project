@@ -296,7 +296,9 @@ private:
 		cb.vOutputColor = {1.0f, 1.0f, 1.0f, 1.0f};
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
-		// Update PS's constant buffer to unique
+		// Update VS and PS's constant buffer to unique
+		con->VSSetShader(vertexshader.Get(), nullptr, 0);
+		con->VSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
 	
@@ -306,6 +308,10 @@ private:
 	// For Skybox Generation
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>			SKBvertexshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			SKBpixelshader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11Buffer>				SKBvertex_Buffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout>			SKBinput = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	SKBtextureRV = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilState>		depthStencilState = nullptr;
 public:
 
 	Mesh(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win, SimpleMesh* _mesh, const wchar_t* texturePath, const wchar_t* normPath) : DrawClass(_d3d11, _win)
@@ -344,6 +350,19 @@ public:
 			depthview->Release();
 		}
 
+		// Creation of DEPTH stencil desc
+		D3D11_DEPTH_STENCIL_DESC desc;
+		ZeroMemory(&desc, sizeof(D3D11_DEPTH_STENCIL_DESC));
+		desc.DepthEnable = true;
+		desc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		desc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+
+		if (FAILED(dev->CreateDepthStencilState(&desc, &depthStencilState)))
+		{
+			DebugBreak();
+			return;
+		}
+
 		// Compile the vertex shader
 		ID3DBlob* pVSBlob = nullptr;
 		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "VS", "vs_4_0", &pVSBlob)))
@@ -354,23 +373,6 @@ public:
 
 		// Create the vertex shader
 		if (FAILED(dev->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, vertexshader.GetAddressOf())))
-		{
-			DebugBreak();
-			pVSBlob->Release();
-			return;
-		}
-
-		// Skybox VS
-		// Compile the Skybox vertex shader
-		pVSBlob = nullptr;
-		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "SKYBOX_VS", "vs_4_0", &pVSBlob)))
-		{
-			DebugBreak();
-			return;
-		}
-
-		// Create the Skybox vertex shader
-		if (FAILED(dev->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, SKBvertexshader.GetAddressOf())))
 		{
 			DebugBreak();
 			pVSBlob->Release();
@@ -393,10 +395,45 @@ public:
 			pVSBlob->Release();
 			return;
 		}
-		pVSBlob->Release();
 
 		con->IASetInputLayout(input.Get());
-		
+
+		// Skybox VS
+		// Compile the Skybox vertex shader
+		pVSBlob = nullptr;
+		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "SKYBOX_VS", "vs_4_0", &pVSBlob)))
+		{
+			DebugBreak();
+			return;
+		}
+
+		// Create the Skybox vertex shader
+		if (FAILED(dev->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, SKBvertexshader.GetAddressOf())))
+		{
+			DebugBreak();
+			pVSBlob->Release();
+			return;
+		}
+
+		// Define the input layout
+		D3D11_INPUT_ELEMENT_DESC SKBlayout[] =
+		{
+			{ "SV_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		};
+		numElements = ARRAYSIZE(SKBlayout);
+
+		// Create the input layout
+		if (FAILED(dev->CreateInputLayout(SKBlayout, numElements, pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), SKBinput.GetAddressOf())))
+		{
+			DebugBreak();
+			pVSBlob->Release();
+			return;
+		}
+
+		pVSBlob->Release();
+
 		// Compile the pixel shaders
 		ID3DBlob* pPSBlob = nullptr;
 		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "PS", "ps_4_0", &pPSBlob)))
@@ -531,6 +568,13 @@ public:
 
 		// Load Normal Map
 		if (FAILED(CreateDDSTextureFromFile(dev, normPath, nullptr, normRV.GetAddressOf())))
+		{
+			DebugBreak();
+			return;
+		}
+
+		// SKYBOX Texture
+		if (FAILED(CreateDDSTextureFromFile(dev, L"Textures\\SunsetSkybox.dds", nullptr, SKBtextureRV.GetAddressOf())))
 		{
 			DebugBreak();
 			return;
@@ -734,8 +778,32 @@ public:
 			con->DrawIndexed(36, 0, 0);
 		}
 
-		// Render the Grid
+		// Render the Skybox
+		{
+			XMFLOAT4 skyPos = {0, 0, 0, 0};
+			XMMATRIX mSky = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&skyPos));
+			XMMATRIX mScaleSky = XMMatrixScaling(1.0f, 1.5f, 1.0f);
+			mSky = mScaleSky * mSky;
 
+			// Update world variable for skybox
+			cb.mWorld = XMMatrixTranspose(mSky);
+			cb.vOutputColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+			con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+			con->PSSetShaderResources(2, 1, SKBtextureRV.GetAddressOf());
+
+			// Update vertex and pixel shader for skybox.
+			con->VSSetShader(SKBvertexshader.Get(), nullptr, 0);
+			con->VSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+			con->PSSetShader(SKBpixelshader.Get(), nullptr, 0);
+			con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+			
+			con->IASetInputLayout(SKBinput.Get());
+			con->OMSetDepthStencilState(depthStencilState.Get(), 0);
+			con->DrawIndexed(36, 0, 0);
+			con->OMSetDepthStencilState(NULL, 0);
+		}
+		con->IASetInputLayout(input.Get());
+		// Render the Grid
 		RenderGrid(con, view, cb);
 
 		timePerFrame = timeCur;
