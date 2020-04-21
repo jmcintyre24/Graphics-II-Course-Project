@@ -10,6 +10,7 @@ using namespace GRAPHICS;
 
 //Globals//
 unsigned int width, height;
+Mesh* m = nullptr;
 
 GWindow win;
 GEventReceiver msgs;
@@ -70,12 +71,28 @@ int main()
 		+win.GetHeight(height);
 
 		float clr[] = { 0.2f, 0.2f, 0.4f, 1 }; // start with blue
+
 		msgs.Create(win, [&]() {
 			if (+msgs.Find(GWindow::Events::RESIZE, true))
 				{
 					+win.GetWidth(width);
 					+win.GetHeight(height);
-					clr[0] += 0.01f; // move towards a cyan as they resize
+					//if (d3d11 != nullptr)
+					//{
+					//	IDXGISwapChain* swap = nullptr;
+					//	ID3D11DeviceContext* con = nullptr;
+					//	ID3D11RenderTargetView* view = nullptr;
+
+					//	if (+d3d11.GetImmediateContext((void**)&con) &&
+					//		+d3d11.GetRenderTargetView((void**)&view) && 
+					//			+d3d11.GetSwapchain((void**)&swap))
+					//	{
+					//		m->ReleaseOnResize();
+					//		con->OMSetRenderTargets(0, 0, 0);
+					//		view->Release();
+
+					//	}
+					//}
 				}
 			});
 
@@ -88,6 +105,7 @@ int main()
 
 			//Triangle tri(d3d11, win);
 			Mesh stoneHenge(d3d11, win, &mesh, L"Textures\\StoneHenge.dds", L"Textures\\StoneHengeNM.dds");
+			m = &stoneHenge;
 			while (+win.ProcessWindowEvents())
 			{
 				IDXGISwapChain* swap = nullptr;

@@ -112,6 +112,8 @@ private:
 	bool moveDirLight = false;
 	bool ghostProtect = false;
 
+	// bool resized = false;
+
 	XMFLOAT4 lightDir[2], lightClr[2];	
 	SimpleMesh* mesh = nullptr;
 
@@ -629,6 +631,11 @@ public:
 		if (mesh == nullptr)
 			return;
 
+		//if (resized == true)
+		//{
+		//	this->InitializeOnResize();
+		//}
+
 		// Update time
 		static float t = 0.0f;
 		static float totT = 0.0f;
@@ -1084,4 +1091,42 @@ public:
 			g_View = XMMatrixMultiply(g_View, translate);
 		}
 	}
+
+	//void ReleaseOnResize()
+	//{
+	//	if(renderTargetView.GetAddressOf() != nullptr)
+	//		renderTargetView.Get()->Release();
+	//	resized = true;
+	//}
+
+	//void InitializeOnResize()
+	//{
+	//	ID3D11Device* dev = nullptr;
+	//	ID3D11DeviceContext* con = nullptr;
+	//	ID3D11DepthStencilView* depthview = nullptr;
+	//	+d3d11.GetDevice((void**)&dev);
+	//	+d3d11.GetImmediateContext((void**)(&con));
+	//	+d3d11.GetDepthStencilView((void**)&depthview);
+
+	//	// Back Buffer setup
+	//	{
+	//		IDXGISwapChain* swp = nullptr;
+	//		+d3d11.GetSwapchain((void**)(&swp));
+	//		// Create a render target view
+	//		ID3D11Texture2D* pBackBuffer = nullptr;
+	//		if (FAILED(swp->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&pBackBuffer))))
+	//			return;
+
+	//		if (FAILED(dev->CreateRenderTargetView(pBackBuffer, nullptr, renderTargetView.GetAddressOf())))
+	//		{
+	//			pBackBuffer->Release();
+	//			return;
+	//		}
+	//		pBackBuffer->Release();
+	//		swp->Release();
+
+	//		con->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthview);
+	//		depthview->Release();
+	//	}
+	//}
 };

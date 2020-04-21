@@ -1,3 +1,0 @@
-E:/DEV4/Graphics-II-Course-Project/DEV4_Project/Builds/CMakeFiles/DEV4.dir
-E:/DEV4/Graphics-II-Course-Project/DEV4_Project/Builds/CMakeFiles/ALL_BUILD.dir
-E:/DEV4/Graphics-II-Course-Project/DEV4_Project/Builds/CMakeFiles/ZERO_CHECK.dir
