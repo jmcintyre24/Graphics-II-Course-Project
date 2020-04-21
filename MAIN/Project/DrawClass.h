@@ -110,9 +110,9 @@ private:
 
 	bool doFlip = false;
 	bool moveDirLight = false;
-	bool ghostProtect = false;
+	bool ghostProtect = false, ghostProtectZ = false;
 
-	// bool resized = false;
+	float zoom = 0;
 
 	XMFLOAT4 lightDir[2], lightClr[2];	
 	SimpleMesh* mesh = nullptr;
@@ -819,6 +819,11 @@ public:
 		view->Release();
 	}
 
+	void changePerspective()
+	{
+		g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2 + zoom, DrawClass::width / (FLOAT)DrawClass::height, 0.01f, 100.0f);
+	}
+
 	void UserInput()
 	{
 		// Rotate the objects.
@@ -845,18 +850,48 @@ public:
 		}
 
 		// Toggle the normal mapping in the Pixel Shader
-		//if ((GetKeyState('M') & 0x8000) && ghostProtectNorm == false)
+		//if ((GetKeyState('M') & 0x8000) && ghostProtectZ == false)
 		//{
-		//	ghostProtectNorm = true;
-		//	doNormMapping = !doNormMapping;
-		//	std::cout << "Norm Map: " << doNormMapping << '\n';
+		//	zoom += 0.01f;
+		//	changePerspective();
+		//	ghostProtectZ = true;
+		//	std::cout << "Norm Map: " << zoom << '\n';
 		//}
-		//else if ((GetKeyState('M') == 0x0000) && ghostProtectNorm == true)
+		//else if ((GetKeyState('M') == 0x0000) && ghostProtectZ == true)
 		//{
-		//	doNormMapping = !doNormMapping;
-		//	ghostProtectNorm = false;
-		//	std::cout << "Norm Map: " << doNormMapping << '\n';
+		//	zoom += 0.01f;
+		//	changePerspective();
+		//	ghostProtectZ = false;
+		//	std::cout << "Norm Map: " << zoom << '\n';
 		//}
+
+		// Left Shift
+		if (GetAsyncKeyState(VK_LSHIFT))
+		{
+			if (zoom > -1.5f)
+			{
+				zoom -= 0.005f;
+				changePerspective();
+			}
+			// std::cout << "Zoom Level: " << zoom << '\n';
+		}
+		// Left Control
+		if (GetAsyncKeyState(VK_LCONTROL))
+		{
+			if (zoom < 0.75f)
+			{
+				zoom += 0.005f;
+				changePerspective();
+			}
+			// std::cout << "Zoom Level: " << zoom << '\n';
+		}
+
+		// Reset Zoom
+		if (GetAsyncKeyState('R'))
+		{
+			zoom = 0.0f;
+			changePerspective();
+		}
 
 		// Look around movement
 		if ((GetKeyState(VK_RBUTTON) & 0x100) != 0)

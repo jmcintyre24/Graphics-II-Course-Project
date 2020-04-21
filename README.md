@@ -19,6 +19,8 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - **Z** toggles the ability to move the directional light.
 - **Holding left click (AFTER PRESSING Z), dragging** moves the directional light horizontally.
 - **J & L** spins the mesh.
+- **Left Shift & Control** zooms in and back out. (Shift > Inwards, Control > Outwards)
+- **R** resets camera zoom.
 
 ## Features (WIP):
 - [x] Complex Mesh Loading with Obj2Header
@@ -32,5 +34,6 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Proceduarly Generated 3D Grid.
 - [x] Stabilized FPS fly-through style camera <--- Fixed Stabilization Issue
 - [x] Infinite Skybox
+- [x] Simple Camera Zoom
 
 

@@ -57,6 +57,8 @@ void PrintInstructions()
 		<< "SPACE - Travel Upwards\n"
 		<< "Q\\E - Quickly turn left and right\n"
 		<< "J\\L - Spins the mesh\n"
+		<< "Left Shift\\Control - Zooms in and Back Out\n"
+		<< "R - Resets Zoom\n"
 		<< "~~~~~~~~~~ERRORS BELOW THIS LINE~~~~~~~~~~\n\n";
 }
 
