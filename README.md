@@ -5,7 +5,7 @@ Graphics II Project Repository
 This is a DirectX11 rendering API created for Project & Portfolio IV (*Graphics-II*) using Gateware libraries. (Which are written & Maintained @ Full Sail University, License's in project.).  
 ***CMake***(**VER.** *3.16+*) is required to build the project, *though there is an executable in the MAIN\Build folder.*
 
-***MAIN*** is the newest project itself, contains a **BUILD folder with two executables (With normal mapping or without normal mapping.)**. [The Build\README.txt reiterates what's stated here!]  
+***MAIN*** is the newest project itself, contains a **BUILD folder contains the executable**.
 #### Cubes are used to represent the lights that have been implemented.
 The cube inwards by the center of the mesh is the point light, the cube farthest away from the mesh is the directional light.
 Along with that, the cube that is the directional light has the unique pixel shader applied to it.
