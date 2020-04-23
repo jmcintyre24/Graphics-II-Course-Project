@@ -27,6 +27,11 @@ struct VS_INPUT
     float2 Tex : TEXCOORD0;
 };
 
+struct GS_OUTPUT
+{
+    float4 Pos : SV_Position;
+};
+
 struct PS_INPUT
 {
     float4 Pos : SV_POSITION;
@@ -67,6 +72,26 @@ SKYBOX_VS_INPUT SKYBOX_VS(SKYBOX_VS_INPUT input)
     output.Tex = input.Pos;
     return output;
 }
+
+//--------------------------------------------------------------------------------------
+// Geometry Shaders
+//--------------------------------------------------------------------------------------
+[maxvertexcount(3)]
+void GS_ShapeShift(point VS_INPUT input[1], inout TriangleStream<GS_OUTPUT> output)
+{
+    GS_OUTPUT simple[3];
+    simple[0].Pos = float4(input[0].Pos.xyz, 1);
+    simple[1].Pos = simple[0].Pos;
+    simple[2].Pos = simple[0].Pos;
+    
+    for (uint i = 0; i < 3; i++)
+    {
+        input[i].Pos = mul(input[i].Pos, View);
+        output.Append(simple[i]);
+    }
+}
+
+
 
 //--------------------------------------------------------------------------------------
 // Pixel Shaders
