@@ -1,7 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\Shaders"
   ],
-  "SelectedNode": "\\main.cpp",
+  "SelectedNode": "\\Shaders\\DEV4_GS.hlsl",
   "PreviewInSolutionExplorer": false
 }
