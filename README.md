@@ -23,6 +23,7 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - **R** resets camera zoom.
 
 ## Features (WIP):
+#### Milestone 1
 - [x] Complex Mesh Loading with Obj2Header
 - [x] Textures on Complex Mesh
 - [x] Directional Lighting on Complex Mesh
@@ -32,8 +33,14 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Normal Mapping on a full 3D complex mesh [StoneHenge].
 - [x] Unique Pixel Shader using relative position, time, and a wave. Causes whatever mesh/object that is using that pixel shader to pulse and change colors based on the X, Z, and time.
 - [x] Proceduarly Generated 3D Grid.
+#### Milestone 2
 - [x] Stabilized FPS fly-through style camera <--- Fixed Stabilization Issue
 - [x] Infinite Skybox
 - [x] Simple Camera Zoom
+#### Milestone 3
+- [ ] Manually Adjustable near- and far- clip-planes.
+- [ ] Proceduraly Created Geoemetry done in Geometry Shader.
+- [ ] Apply any FULL SCREEN post processing
+- [ ] Volumetric Fog (toggle)
 
 
