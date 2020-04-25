@@ -43,7 +43,7 @@ public:
 		{
 			if (pErrorBlob)
 			{
-				OutputDebugStringA(reinterpret_cast<const char*>(pErrorBlob->GetBufferPointer()));
+				OutputDebugStringA(reinterpret_cast<const char*>(pErrorBlob->GetBufferPointer())); // Print to output window.
 				pErrorBlob->Release();
 			}
 			return hr;
@@ -95,6 +95,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		renderTargetView = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>			input = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>			vertexshader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11GeometryShader>		geoshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderLights = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderUnique = nullptr;
@@ -437,6 +438,25 @@ public:
 
 		pVSBlob->Release();
 
+		// Create the Geometry Shader
+		ID3DBlob* pGSBlob = nullptr;
+
+		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "GS", "gs_4_0", &pGSBlob)))
+		{
+			DebugBreak();
+			pGSBlob->Release();
+			return;
+		}
+
+		if (FAILED(dev->CreateGeometryShader(pGSBlob->GetBufferPointer(), pGSBlob->GetBufferSize(), NULL, &geoshader)))
+		{
+			DebugBreak();
+			pGSBlob->Release();
+			return;
+		}
+
+		pGSBlob->Release();
+
 		// Compile the pixel shaders
 		ID3DBlob* pPSBlob = nullptr;
 		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "PS", "ps_4_0", &pPSBlob)))
@@ -729,13 +749,19 @@ public:
 		// Set Index Buffer
 		con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
+		// Set Vertex Shader
 		con->VSSetShader(vertexshader.Get(), nullptr, 0);
 		con->VSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		// Set the Geometry Shader
+		con->GSSetShader(geoshader.Get(), 0, 0);
+		con->GSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		// Set Pixel Shader
 		con->PSSetShader(pixelshader.Get(), nullptr, 0);
 		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetShaderResources(0, 1, textureRV.GetAddressOf());
 		con->PSSetShaderResources(1, 1, normRV.GetAddressOf());
 		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
+		// Draw out the mesh
 		con->DrawIndexed(mesh->indicesList.size(), 0, 0);
 
 		// Render the light sources as cubes (So they are visible)
@@ -747,6 +773,9 @@ public:
 
 		// Set Index Buffer
 		con->IASetIndexBuffer(c_indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+		// Reset Geometry Shader so it doesn't affect everything else.
+		con->GSSetShader(nullptr, 0, 0);
 
 		// Render the lighting sources as a cube.
 		for (int i = 0; i < 2; i++)

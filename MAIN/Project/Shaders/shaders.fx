@@ -27,11 +27,6 @@ struct VS_INPUT
     float2 Tex : TEXCOORD0;
 };
 
-struct GS_OUTPUT
-{
-    float4 Pos : SV_Position;
-};
-
 struct PS_INPUT
 {
     float4 Pos : SV_POSITION;
@@ -76,18 +71,78 @@ SKYBOX_VS_INPUT SKYBOX_VS(SKYBOX_VS_INPUT input)
 //--------------------------------------------------------------------------------------
 // Geometry Shaders
 //--------------------------------------------------------------------------------------
-[maxvertexcount(3)]
-void GS_ShapeShift(point VS_INPUT input[1], inout TriangleStream<GS_OUTPUT> output)
+#define triCountOut 12
+[maxvertexcount(triCountOut)]
+void GS(triangle PS_INPUT input[3], inout TriangleStream<PS_INPUT> output)
 {
-    GS_OUTPUT simple[3];
-    simple[0].Pos = float4(input[0].Pos.xyz, 1);
-    simple[1].Pos = simple[0].Pos;
-    simple[2].Pos = simple[0].Pos;
+    PS_INPUT simple[triCountOut];
+    simple[0] = input[0];
+    simple[1] = input[1];
+    simple[2] = input[2];
     
-    for (uint i = 0; i < 3; i++)
+    // Set everything other than the 'base' to the 'base'
+    for (int i = 3; i < triCountOut; i += 3)
     {
-        input[i].Pos = mul(input[i].Pos, View);
-        output.Append(simple[i]);
+        simple[i] = simple[0];
+        simple[i].Pos = simple[0].worldPos; // Set the position to the world so we can make it stay stationary.
+        simple[i + 1] = simple[1];
+        simple[i + 1].Pos = simple[1].worldPos;
+        simple[i + 2] = simple[2];
+        simple[i + 2].Pos = simple[2].worldPos;
+    }
+    
+    // First Little rock.
+    for (int x = 3; x < 6; x++)
+    {
+        // Scale
+        simple[x].Pos.x *= 0.25f;
+        simple[x].Pos.y *= 0.25f;
+        simple[x].Pos.z *= 0.25f;
+        // Movement
+        simple[x].Pos.x += 0.85f;
+        simple[x].Pos.y -= 0.2f;
+        simple[x].Pos.z += 0.5f;
+    }
+    
+    // Second Little rock.
+    for (int x = 6; x < 9; x++)
+    {
+        // Scale
+        simple[x].Pos.x *= 0.25f;
+        simple[x].Pos.y *= 0.25f;
+        simple[x].Pos.z *= 0.25f;
+        // Movement
+        simple[x].Pos.x -= 0.75f;
+        simple[x].Pos.y -= 0.25;
+        simple[x].Pos.z -= 0.5f;
+    }
+    
+    // Third Little rock.
+    for (int x = 9; x < 12; x++)
+    {
+        // Scale
+        simple[x].Pos.x *= 0.0625f;
+        simple[x].Pos.y *= 0.0625f;
+        simple[x].Pos.z *= 0.0625f;
+        // Movement
+        simple[x].Pos.x += 0.05f;
+        simple[x].Pos.y += 0.27f;
+        simple[x].Pos.z += 0.05f;
+    }
+    
+    // Loop through and append everything to the stream.
+    for (int z = 0; z < triCountOut; z++)
+    {
+        if(z >= 3) // Render the mesh 'normally' since we're using the mesh itself as the base, then restart the output strip and redo the points here.
+        {
+            if (fmod(z, 3) == 0 || simple[z].Pos.y < -0.1f) // Every three vertices, cut the output.
+            {
+                output.RestartStrip();
+            }
+            simple[z].Pos = mul(simple[z].Pos, View);
+            simple[z].Pos = mul(simple[z].Pos, Projection);  
+        }
+        output.Append(simple[z]);
     }
 }
 

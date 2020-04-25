@@ -43,6 +43,6 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Simple Camera Zoom
 #### Milestone 3
 - [x] Manually Adjustable near- and far- clip-planes.
-- [ ] Proceduraly Created Geoemetry done in Geometry Shader.
+- [x] Proceduraly Created Geometry done in Geometry Shader. *(Borderline/Unsure Implemented a geometry shader that uses the existing mesh and creates smaller versions and 'spilt' versions to generate cheap rocks procedurally.)*
 - [ ] Apply any FULL SCREEN post processing
 - [ ] Volumetric Fog (toggle)
