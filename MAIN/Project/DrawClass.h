@@ -113,6 +113,7 @@ private:
 	bool ghostProtect = false, ghostProtectZ = false;
 
 	float zoom = 0;
+	float nearP = 0.01f, farP = 100.0f;
 
 	XMFLOAT4 lightDir[2], lightClr[2];	
 	SimpleMesh* mesh = nullptr;
@@ -609,7 +610,7 @@ public:
 		g_View = XMMatrixInverse(&det, g_View);
 
 		// Initialize the projection matrix
-		g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, 0.01f, 100.0f);
+		g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, nearP, farP);
 
 		// Set-up Lighting Variables
 		{
@@ -821,7 +822,7 @@ public:
 
 	void changePerspective()
 	{
-		g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2 + zoom, DrawClass::width / (FLOAT)DrawClass::height, 0.01f, 100.0f);
+		g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2 + zoom, DrawClass::width / (FLOAT)DrawClass::height, nearP, farP);
 	}
 
 	void UserInput()
@@ -865,7 +866,7 @@ public:
 		//	std::cout << "Norm Map: " << zoom << '\n';
 		//}
 
-		// Left Shift
+		// Left Shift [Zooms in by decreasing FOV]
 		if (GetAsyncKeyState(VK_LSHIFT))
 		{
 			if (zoom > -1.5f)
@@ -875,7 +876,7 @@ public:
 			}
 			// std::cout << "Zoom Level: " << zoom << '\n';
 		}
-		// Left Control
+		// Left Control ['Zooms' out by increasing FOV]
 		if (GetAsyncKeyState(VK_LCONTROL))
 		{
 			if (zoom < 0.75f)
@@ -886,10 +887,58 @@ public:
 			// std::cout << "Zoom Level: " << zoom << '\n';
 		}
 
-		// Reset Zoom
+		// Moves near plane closer
+		if (GetAsyncKeyState('G'))
+		{
+			if (nearP > 0.05f)
+			{
+				nearP -= 0.05f;
+				changePerspective();
+			}
+		}
+
+		// Moves near plane farther
+		if (GetAsyncKeyState('T'))
+		{
+			if (nearP < 50.0f && (nearP + 2.0f) < farP)
+			{
+				nearP += 0.05f;
+				changePerspective();
+			}
+		}
+
+		// Moves far plane closer
+		if (GetAsyncKeyState('Y'))
+		{
+			if (farP > 10.0f && GetAsyncKeyState('6'))
+			{
+				farP = 10.0f;	// I added this here so that the effect could be visually seen faster. (Since my scene is small.)
+				std::cout << "[NOT AN ERROR] Successfully set far-plane to 10.0f.\n|\n";
+			}
+
+			if (farP > (nearP + 2.0f))
+			{
+				farP -= 0.1f;
+				changePerspective();
+			}
+		}
+
+		// Moves far plane farther
+		if (GetAsyncKeyState('H'))
+		{
+			if (farP < 250.0f)
+			{
+				farP += 0.1f;
+				changePerspective();
+			}
+		}
+
+		// Reset Zoom & Clipping Planes
 		if (GetAsyncKeyState('R'))
 		{
 			zoom = 0.0f;
+			nearP = 0.01f;
+			farP = 100.0f;
 			changePerspective();
 		}
 
@@ -990,7 +1039,7 @@ public:
 				else
 				{
 					// Create the rotation matrix based on mouse input.
-					XMMATRIX rot = XMMatrixRotationRollPitchYaw(diffY / 125.0f, 0, diffX / 125.0f);
+					XMMATRIX rot = XMMatrixRotationRollPitchYaw(diffY / 50.0f, -diffX / 50.0f, 0);
 
 					g_View = XMMatrixMultiply(rot, g_View);
 				}

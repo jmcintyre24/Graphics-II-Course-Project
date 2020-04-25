@@ -57,8 +57,10 @@ void PrintInstructions()
 		<< "SPACE - Travel Upwards\n"
 		<< "Q\\E - Quickly turn left and right\n"
 		<< "J\\L - Spins the mesh\n"
-		<< "Left Shift\\Control - Zooms in and Back Out\n"
-		<< "R - Resets Zoom\n"
+		<< "(HOLD) Left Shift\\Control - Zooms in and Back Out\n"
+		<< "(HOLD) T\\G - Controls Near Plane [T moves it outwards, G inwards.]\n"
+		<< "(HOLD) Y\\H - Controls Far Plane [Y moves it inwards, H outwards.]\n\t[While holding Y, press 6 to instantly set to 10.0f if farP > 10.0f, a MSG will print out.]\n"
+		<< "R - Resets Zoom & Clipping Planes\n"
 		<< "~~~~~~~~~~ERRORS BELOW THIS LINE~~~~~~~~~~\n\n";
 }
 

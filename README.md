@@ -20,9 +20,13 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - **Holding left click (AFTER PRESSING Z), dragging** moves the directional light horizontally.
 - **J & L** spins the mesh.
 - **Left Shift & Control** zooms in and back out. (Shift > Inwards, Control > Outwards)
-- **R** resets camera zoom.
+- **T & G** controls near plane. (T moves it outwards, G inwards.)
+- **Y & H** controls far plane. (Y moves it inwards, H outwards.) 
+	- While ***holding Y, press 6*** to instantly set to 10.0f if the far plane is greater than 10.0f, a MSG will print out [In Console] stating it was successful.
+- **R** resets camera zoom & clipping planes.
 
 ## Features (WIP):
+
 #### Milestone 1
 - [x] Complex Mesh Loading with Obj2Header
 - [x] Textures on Complex Mesh
@@ -38,9 +42,7 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Infinite Skybox
 - [x] Simple Camera Zoom
 #### Milestone 3
-- [ ] Manually Adjustable near- and far- clip-planes.
+- [x] Manually Adjustable near- and far- clip-planes.
 - [ ] Proceduraly Created Geoemetry done in Geometry Shader.
 - [ ] Apply any FULL SCREEN post processing
 - [ ] Volumetric Fog (toggle)
-
-
