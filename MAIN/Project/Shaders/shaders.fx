@@ -12,9 +12,10 @@ cbuffer ConstantBuffer : register(b0) // b for constant buffers
     float4 vLightDir[2];
     float4 vLightColor[2];
     float4 vOutputColor;
+    float time;
 }
 
-cbuffer UniqueBuffer : register(b1)
+cbuffer UniqueBuffer : register(b1) // Definitly unncessary use here.
 {
     float4 timePos;
 }
@@ -50,6 +51,20 @@ PS_INPUT VS(VS_INPUT input)
 {
     PS_INPUT output = (PS_INPUT) 0;
     output.Pos = mul(input.Pos, World);
+    output.Pos = mul(output.Pos, View);
+    output.Pos = mul(output.Pos, Projection);
+    output.worldPos = mul(input.Pos, World);
+    output.Norm = mul(float4(input.Norm, 1), World).xyz;
+    output.Tang = mul(input.Pos, World);
+    output.Tex = input.Tex;
+    return output;
+}
+
+PS_INPUT VSWave(VS_INPUT input)
+{
+    PS_INPUT output = (PS_INPUT) 0;
+    output.Pos = mul(input.Pos, World);
+    output.Pos.y += 0.5f * sin(1 * output.Pos.x + time);
     output.Pos = mul(output.Pos, View);
     output.Pos = mul(output.Pos, Projection);
     output.worldPos = mul(input.Pos, World);
@@ -146,7 +161,26 @@ void GS(triangle PS_INPUT input[3], inout TriangleStream<PS_INPUT> output)
     }
 }
 
-
+[maxvertexcount(2)]
+void GSWave(line PS_INPUT input[2], inout LineStream<PS_INPUT> output)
+{
+    // Get the base values in world space.
+    input[0].Pos = input[0].worldPos;
+    input[1].Pos = input[1].worldPos;
+    
+    // Modify them
+    input[0].Pos.y += 0.5f * sin(1 * input[0].Pos.x + 1 * time);
+    input[1].Pos.y += 0.5f * sin(1 * input[1].Pos.x + 1 * time);
+    
+    // Loop through and append everything to the stream.
+    for (int i = 0; i < 2; i++)
+    {
+        // Output them
+        input[i].Pos = mul(input[i].Pos, View);
+        input[i].Pos = mul(input[i].Pos, Projection);
+        output.Append(input[i]);
+    }
+}
 
 //--------------------------------------------------------------------------------------
 // Pixel Shaders

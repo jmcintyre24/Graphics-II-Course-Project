@@ -10,7 +10,6 @@ using namespace GRAPHICS;
 
 //Globals//
 unsigned int width, height;
-Mesh* m = nullptr;
 
 GWindow win;
 GEventReceiver msgs;
@@ -109,7 +108,7 @@ int main()
 
 			//Triangle tri(d3d11, win);
 			Mesh stoneHenge(d3d11, win, &mesh, L"Textures\\StoneHenge.dds", L"Textures\\StoneHengeNM.dds");
-			m = &stoneHenge;
+
 			while (+win.ProcessWindowEvents())
 			{
 				IDXGISwapChain* swap = nullptr;

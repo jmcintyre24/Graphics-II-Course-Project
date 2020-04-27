@@ -84,7 +84,7 @@ private:
 		XMFLOAT4 lightDir[2];
 		XMFLOAT4 lightClr[2];
 		XMFLOAT4 vOutputColor;
-		bool doNormMap;
+		float time;
 	};
 
 	struct UniqueBuffer
@@ -95,7 +95,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		renderTargetView = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>			input = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader>			vertexshader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader>			vertexshaderwave = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11GeometryShader>		geoshader = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11GeometryShader>		geoshaderwave = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderLights = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderUnique = nullptr;
@@ -300,13 +302,18 @@ private:
 		cb.vOutputColor = {1.0f, 1.0f, 1.0f, 1.0f};
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
-		// Update VS and PS's constant buffer to unique
-		con->VSSetShader(vertexshader.Get(), nullptr, 0);
+		// Update VS, GS, and PS's constant buffer to unique
+		con->VSSetShader(vertexshaderwave.Get(), nullptr, 0);
 		con->VSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		//con->GSSetShader(geoshaderwave.Get(), 0, 0);
+		//con->GSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
 	
 		con->DrawIndexed(gridIndices.size(), 0, 0);
+		
+		// Reset Geometry Shader so it doesn't affect everything else.
+		//con->GSSetShader(nullptr, 0, 0);
 	}
 
 	// For Skybox Generation
@@ -383,6 +390,22 @@ public:
 			return;
 		}
 
+		// Compile the vertex shader for the wave.
+		pVSBlob = nullptr;
+		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "VSWave", "vs_4_0", &pVSBlob)))
+		{
+			DebugBreak();
+			return;
+		}
+
+		// Create the vertex shader for thew wave.
+		if (FAILED(dev->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, vertexshaderwave.GetAddressOf())))
+		{
+			DebugBreak();
+			pVSBlob->Release();
+			return;
+		}
+
 		// Define the input layout
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{
@@ -438,7 +461,7 @@ public:
 
 		pVSBlob->Release();
 
-		// Create the Geometry Shader
+		// Create the Base Geometry Shader
 		ID3DBlob* pGSBlob = nullptr;
 
 		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "GS", "gs_4_0", &pGSBlob)))
@@ -449,6 +472,22 @@ public:
 		}
 
 		if (FAILED(dev->CreateGeometryShader(pGSBlob->GetBufferPointer(), pGSBlob->GetBufferSize(), NULL, &geoshader)))
+		{
+			DebugBreak();
+			pGSBlob->Release();
+			return;
+		}
+
+		// Create the Wave Geometry Shader
+		pGSBlob = nullptr;
+		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "GSWave", "gs_4_0", &pGSBlob)))
+		{
+			DebugBreak();
+			pGSBlob->Release();
+			return;
+		}
+
+		if (FAILED(dev->CreateGeometryShader(pGSBlob->GetBufferPointer(), pGSBlob->GetBufferSize(), NULL, &geoshaderwave)))
 		{
 			DebugBreak();
 			pGSBlob->Release();
@@ -652,14 +691,8 @@ public:
 		if (mesh == nullptr)
 			return;
 
-		//if (resized == true)
-		//{
-		//	this->InitializeOnResize();
-		//}
-
 		// Update time
-		static float t = 0.0f;
-		static float totT = 0.0f;
+		static float t = 0.0f, tUpToOne = 0.0f, tTotal;
 
 		static ULONGLONG timePerFrame = 0, timeStart = 0;
 
@@ -669,10 +702,15 @@ public:
 		t = (timeCur - timePerFrame) / 1500.0f;
 		if (timeStart == 0)
 			timeStart = timeCur;
-		totT = (timeCur - timeStart) / 1000.0f;
+		tUpToOne = (timeCur - timeStart) / 1000.0f;
+		tTotal += t * 2.0f;
+
+		// Reset the total time with that of the sine wave. (2 * pi)
+		if (tTotal > 6.28f)
+			tTotal = 0;
 
 		// To cause a pulse for the Unique Pixel Shader
-		if (totT > 1)
+		if (tUpToOne > 1)
 		{
 			timeStart = timeCur;
 		}
@@ -732,11 +770,12 @@ public:
 		cb.lightDir[1] = lightDir[1];
 		cb.lightClr[1] = lightClr[1];
 		cb.vOutputColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		cb.time = tTotal;
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
 		// Unique Constant Buffer to communicate for unique PS
 		UniqueBuffer ub;
-		ub.timePos = { totT, 0, 0, 0};
+		ub.timePos = { tUpToOne, 0, 0, 0};
 		con->UpdateSubresource(u_constantbuffer.Get(), 0, nullptr, &ub, 0, 0);
 
 		// Render the mesh
@@ -1068,7 +1107,7 @@ public:
 				else
 				{
 					// Create the rotation matrix based on mouse input.
-					XMMATRIX rot = XMMatrixRotationRollPitchYaw(diffY / 50.0f, -diffX / 50.0f, 0);
+					XMMATRIX rot = XMMatrixRotationRollPitchYaw(-diffY / 50.0f, -diffX / 50.0f, 0);
 
 					g_View = XMMatrixMultiply(rot, g_View);
 				}

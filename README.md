@@ -44,5 +44,4 @@ Along with that, the cube that is the directional light has the unique pixel sha
 #### Milestone 3
 - [x] Manually Adjustable near- and far- clip-planes.
 - [x] Proceduraly Created Geometry done in Geometry Shader. *(Borderline/Unsure Implemented a geometry shader that uses the existing mesh and creates smaller versions and 'spilt' versions to generate cheap rocks procedurally.)*
-- [ ] Apply any FULL SCREEN post processing
-- [ ] Volumetric Fog (toggle)
+- [x] Vertex Shader Wave. (Modified vertex grid base don sine wave.)
