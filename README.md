@@ -7,7 +7,7 @@ This is a DirectX11 rendering API created for Project & Portfolio IV (*Graphics-
 
 ***MAIN*** is the newest project itself, contains a **BUILD folder contains the executable**.
 #### Cubes are used to represent the lights that have been implemented.
-The cube inwards by the center of the mesh is the point light, the cube farthest away from the mesh is the directional light.
+The cube inwards by the center of the mesh is the point light, the 'rainbow' cube that can be controlled is the directional light, the red light is the spot light.
 Along with that, the cube that is the directional light has the unique pixel shader applied to it.
 
 ## Controls:
@@ -46,3 +46,4 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Proceduraly Created Geometry done in Geometry Shader. *(Borderline/Unsure Implemented a geometry shader that uses the existing mesh and creates smaller versions and 'spilt' versions to generate cheap rocks procedurally.)*
 - [x] Vertex Shader Wave. (Modified vertex grid base don sine wave.)
 - [x] Render to Texture. (Rendering out an offscreen scene to a texture on a 3D object.)
+- [x] Functional spot light added with cone attentuation.

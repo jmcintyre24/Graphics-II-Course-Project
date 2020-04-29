@@ -81,10 +81,11 @@ private:
 		XMMATRIX mWorld;
 		XMMATRIX mView;
 		XMMATRIX mProjection;
-		XMFLOAT4 lightDir[2];
-		XMFLOAT4 lightClr[2];
+		XMFLOAT4 lightDir[3];
+		XMFLOAT4 lightClr[3];
 		XMFLOAT4 vOutputColor;
 		float time;
+		float cone;
 	};
 
 	struct UniqueBuffer
@@ -119,7 +120,8 @@ private:
 	float zoom = 0;
 	float nearP = 0.01f, farP = 100.0f;
 
-	XMFLOAT4 lightDir[2], lightClr[2];	
+	XMFLOAT4 lightDir[3], lightClr[3]; // Should've used a structure here - Note for 'next' time.
+	float cone = 20.0f;
 	SimpleMesh* mesh = nullptr;
 
 
@@ -485,7 +487,7 @@ private:
 
 		// Start rendering the cube.
 		XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&posRTTCube));
-		XMMATRIX mLightScale = XMMatrixScaling(1, 1, 1);
+		XMMATRIX mLightScale = XMMatrixScaling(.5f, .5f, .5f);
 		mLight = mLightScale * mLight;
 
 		// Update the world variable to reflect the current light
@@ -880,6 +882,9 @@ public:
 			// Positional Lighting
 			lightDir[1] = { 0.0f, 0.2f, -1.0f, 1.0f };
 			lightClr[1] = { 0.0f, 0.8f, 0.8f, 1.0f };
+			// Spot Light
+			lightDir[2] = { 0.0f, 0.577f, -0.577f, 1.0f };
+			lightClr[2] = { 1.0f, 0.0f, 0.0f, 1.0f };
 		}
 
 		InitRTT(dev, con);
@@ -932,6 +937,7 @@ public:
 		{
 			lightClr[1].y -= t;
 			lightClr[1].z -= t;
+			cone -= t;
 
 			if(!XMVector3GreaterOrEqual({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.0f,0.1f,0.1f }))
 				doFlip = true;
@@ -940,10 +946,12 @@ public:
 		{
 			lightClr[1].y += t;
 			lightClr[1].z += t;
-
+			cone += t;
 			if (XMVector3GreaterOrEqual({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.0f, 0.9f, 0.9f }))
 				doFlip = false;
 		}
+
+		std::cout << cone << '\n';
 
 		// Rotate the directional light around the origin
 		if (!moveDirLight)
@@ -972,8 +980,12 @@ public:
 		// Point Light [1]
 		cb.lightDir[1] = lightDir[1];
 		cb.lightClr[1] = lightClr[1];
+		// Spot Light [2]
+		cb.lightDir[2] = lightDir[2];
+		cb.lightClr[2] = lightClr[2];
 		cb.vOutputColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 		cb.time = tTotal;
+		cb.cone = cone;
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
 		// Unique Constant Buffer to communicate for unique PS
@@ -1045,26 +1057,10 @@ public:
 		con->IASetIndexBuffer(c_indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
 		// Render the lighting sources as a cube.
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < 3; i++)
 		{
-			// Positional Light
-			if (i == 1)
-			{
-				XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&lightDir[i]));
-				XMMATRIX mLightScale = XMMatrixScaling(0.05f, 0.05f, 0.05f);
-				mLight = mLightScale * mLight;
-
-				// Update the world variable to reflect the current light
-				cb.mWorld = XMMatrixTranspose(mLight);
-				cb.vOutputColor = lightClr[i];
-				con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
-
-				// Be sure the constant buffer is still the contsant buffer.
-				con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
-				con->PSSetShader(pixelshaderSolid.Get(), nullptr, 0);
-			}
 			// Directional Light
-			else
+			if (i == 0)
 			{
 				XMMATRIX mLight = XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&lightDir[i]));
 				XMMATRIX mLightScale = XMMatrixScaling(0.2f, 0.2f, 0.2f);
@@ -1079,6 +1075,40 @@ public:
 				con->PSSetConstantBuffers(1, 1, u_constantbuffer.GetAddressOf());
 				con->PSSetShader(pixelshaderUnique.Get(), nullptr, 0);
 			}
+			// Positional Light
+			else if (i == 1)
+			{
+				XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&lightDir[i]));
+				XMMATRIX mLightScale = XMMatrixScaling(0.05f, 0.05f, 0.05f);
+				mLight = mLightScale * mLight;
+
+				// Update the world variable to reflect the current light
+				cb.mWorld = XMMatrixTranspose(mLight);
+				cb.vOutputColor = lightClr[i];
+				con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
+				// Be sure the constant buffer is still the contsant buffer.
+				con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+				con->PSSetShader(pixelshaderSolid.Get(), nullptr, 0);
+			}
+			// Spot Light
+			else
+			{
+				XMVECTOR lightPos = { 0.0f, 2.0f, -2.0f, 1.0f};
+				XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * lightPos);
+				XMMATRIX mLightScale = XMMatrixScaling(0.05f, 0.05f, 0.05f);
+				mLight = mLightScale * mLight;
+
+				// Update the world variable to reflect the current light
+				cb.mWorld = XMMatrixTranspose(mLight);
+				cb.vOutputColor = lightClr[i];
+				con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
+				// Be sure the constant buffer is still the contsant buffer.
+				con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+				con->PSSetShader(pixelshaderSolid.Get(), nullptr, 0);
+			}
+
 			con->DrawIndexed(36, 0, 0);
 		}
 

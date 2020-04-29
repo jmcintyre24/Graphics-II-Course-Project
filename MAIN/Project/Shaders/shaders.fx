@@ -9,10 +9,11 @@ cbuffer ConstantBuffer : register(b0) // b for constant buffers
     matrix World;
     matrix View;
     matrix Projection;
-    float4 vLightDir[2];
-    float4 vLightColor[2];
+    float4 vLightDir[3];
+    float4 vLightColor[3];
     float4 vOutputColor;
     float time;
+    float cone;
 }
 
 cbuffer UniqueBuffer : register(b1) // Definitly unncessary use here.
@@ -34,7 +35,7 @@ struct PS_INPUT
     float4 worldPos : POSITION;
     float3 Norm : NORMAL;
     float3 Tang : TANGENT;
-    float2 Tex : TEXCOORD0;
+    float2 Tex : TEXCOORD1;
 };
 
 struct SKYBOX_VS_INPUT
@@ -162,7 +163,7 @@ void GS(triangle PS_INPUT input[3], inout TriangleStream<PS_INPUT> output)
 }
 
 [maxvertexcount(2)]
-void GSWave(line PS_INPUT input[2], inout LineStream<PS_INPUT> output)
+void GSWave(line PS_INPUT input[2], inout LineStream<PS_INPUT> output) // Unused, but kept in here for reference and experimentation.
 {
     // Get the base values in world space.
     input[0].Pos = input[0].worldPos;
@@ -188,7 +189,7 @@ void GSWave(line PS_INPUT input[2], inout LineStream<PS_INPUT> output)
 float4 PS(PS_INPUT input) : SV_Target
 {
     // Have this value up to 0.075f for some ambient light.
-    float4 finalColor = 0.075f;
+    float4 finalColor = 0.050f;
         
     // Normal Map
     if (abs(input.Norm[0]) > 0)
@@ -208,7 +209,7 @@ float4 PS(PS_INPUT input) : SV_Target
     
     
     // Apply Lighting
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         // Directional Lighting
         if(i == 0)
@@ -226,6 +227,24 @@ float4 PS(PS_INPUT input) : SV_Target
             {
                 finalColor += saturate(dot((float3) lightDir, input.Norm) * vLightColor[i]);
             }
+        }
+        // Spot Light
+        else if (i == 2)
+        {
+            float4 lightPos = { 0.0f, 2.0f, -2.0f, 1.0f };
+            float4 lightDir = normalize(lightPos - input.worldPos); // Light direction.
+            float surfaceratio = saturate(dot(lightDir, vLightDir[i]));
+            float coneRatio = cone / 25.0f;
+            int spotfactor = (surfaceratio > coneRatio) ? 1 : 0; // Hardcoded cone ratio <- bad me
+            float distance = length(lightDir);
+            float lightRatio = saturate(dot((float3) lightDir, input.Norm));
+            
+            // For Attenuation
+            float innerConeRatio = (cone + 0.25f) / 25.0f;
+            float atten = 1.0f - saturate((innerConeRatio - surfaceratio) / (innerConeRatio - coneRatio));
+            
+            // Apply the spotlight color.
+            finalColor += saturate(spotfactor * lightRatio * vLightColor[i] * finalColor * atten);
         }
     }
     
