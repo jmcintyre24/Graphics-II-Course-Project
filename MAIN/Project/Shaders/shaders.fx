@@ -34,14 +34,14 @@ struct PS_INPUT
     float4 worldPos : POSITION;
     float3 Norm : NORMAL;
     float3 Tang : TANGENT;
-    float2 Tex : TEXCOORD1;
+    float2 Tex : TEXCOORD0;
 };
 
 struct SKYBOX_VS_INPUT
 {
     float4 Pos : SV_POSITION;
     float3 Norm : NORMAL;
-    float3 Tex : TEXCOORD0;
+    float3 Tex : TEXCOORD2;
 };
 
 //--------------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ void GS(triangle PS_INPUT input[3], inout TriangleStream<PS_INPUT> output)
         simple[i + 2] = simple[2];
         simple[i + 2].Pos = simple[2].worldPos;
     }
-    
+
     // First Little rock.
     for (int x = 3; x < 6; x++)
     {
@@ -238,7 +238,16 @@ float4 PS(PS_INPUT input) : SV_Target
 
 float4 PSSolid(PS_INPUT input) : SV_Target
 {
-    return vOutputColor;
+    float4 finalColor = vOutputColor;
+    float4 refColor = skybox.Sample(samLinear, input.Tang);
+    return finalColor * refColor;
+}
+
+float4 PSNoLights(PS_INPUT input) : SV_Target
+{    
+    //float2 UV = { 0.5076, .5276 };
+    float4 color = txDiffuse.Sample(samLinear, input.Tex);
+    return color;
 }
 
 // Create a pulsation on the color w/ color change on position.

@@ -24,7 +24,8 @@ void ReadModel(Mesh::SimpleMesh& mesh)
 		Mesh::SimpleVertex vert;
 		vert.Pos = { (StoneHenge_data[i].pos[0] * 0.1f),
 			(StoneHenge_data[i].pos[1] * 0.1f),
-			(StoneHenge_data[i].pos[2] * 0.1f) };
+			(StoneHenge_data[i].pos[2] * 0.1f),
+			(1.0f		)};
 
 		// UV		   
 		vert.UV = { StoneHenge_data[i].uvw[0],

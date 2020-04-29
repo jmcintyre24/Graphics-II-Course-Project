@@ -64,7 +64,7 @@ class Mesh : DrawClass
 public:
 	struct SimpleVertex
 	{
-		XMFLOAT3 Pos;
+		XMFLOAT4 Pos;
 		XMFLOAT3 Normal;
 		XMFLOAT2 UV;
 	};
@@ -99,7 +99,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11GeometryShader>		geoshader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11GeometryShader>		geoshaderwave = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshader = nullptr;
-	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderLights = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderSolid = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderNoLights = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader>			pixelshaderUnique = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				vertexbuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11Buffer>				indexbuffer = nullptr;
@@ -133,35 +134,35 @@ private:
 		// Create vertex buffer
 		SimpleVertex vertices[] =
 		{
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
+			{ XMFLOAT4(-1.0f, 1.0f, -1.0f, 1.0f),	XMFLOAT3(0.0f, 1.0f, 0.0f),		XMFLOAT2(1.0f, 0.0f)},
+			{ XMFLOAT4(1.0f, 1.0f, -1.0f, 1.0f),	XMFLOAT3(0.0f, 1.0f, 0.0f),		XMFLOAT2(0.0f, 0.0f)},
+			{ XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),		XMFLOAT3(0.0f, 1.0f, 0.0f),		XMFLOAT2(0.0f, 1.0f)},
+			{ XMFLOAT4(-1.0f, 1.0f, 1.0f, 1.0f),	XMFLOAT3(0.0f, 1.0f, 0.0f),		XMFLOAT2(1.0f, 1.0f)},
 
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
+			{ XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f),	XMFLOAT3(0.0f, -1.0f, 0.0f),	XMFLOAT2(0.0f, 0.0f)},
+			{ XMFLOAT4(1.0f, -1.0f, -1.0f, 1.0f),	XMFLOAT3(0.0f, -1.0f, 0.0f),	XMFLOAT2(1.0f, 0.0f)},
+			{ XMFLOAT4(1.0f, -1.0f, 1.0f, 1.0f),	XMFLOAT3(0.0f, -1.0f, 0.0f),	XMFLOAT2(1.0f, 1.0f)},
+			{ XMFLOAT4(-1.0f, -1.0f, 1.0f, 1.0f),	XMFLOAT3(0.0f, -1.0f, 0.0f),	XMFLOAT2(0.0f, 1.0f)},
 
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
+			{ XMFLOAT4(-1.0f, -1.0f, 1.0f, 1.0f),	XMFLOAT3(-1.0f, 0.0f, 0.0f),	XMFLOAT2(0.0f, 1.0f)},
+			{ XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f),	XMFLOAT3(-1.0f, 0.0f, 0.0f),	XMFLOAT2(1.0f, 1.0f)},
+			{ XMFLOAT4(-1.0f, 1.0f, -1.0f, 1.0f),	XMFLOAT3(-1.0f, 0.0f, 0.0f),	XMFLOAT2(1.0f, 0.0f)},
+			{ XMFLOAT4(-1.0f, 1.0f, 1.0f, 1.0f),	XMFLOAT3(-1.0f, 0.0f, 0.0f),	XMFLOAT2(0.0f, 0.0f)},
 
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
+			{ XMFLOAT4(1.0f, -1.0f, 1.0f, 1.0f),	XMFLOAT3(1.0f, 0.0f, 0.0f),		XMFLOAT2(1.0f, 1.0f)},
+			{ XMFLOAT4(1.0f, -1.0f, -1.0f, 1.0f),	XMFLOAT3(1.0f, 0.0f, 0.0f),		XMFLOAT2(0.0f, 1.0f)},
+			{ XMFLOAT4(1.0f, 1.0f, -1.0f, 1.0f),	XMFLOAT3(1.0f, 0.0f, 0.0f),		XMFLOAT2(0.0f, 0.0f)},
+			{ XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),		XMFLOAT3(1.0f, 0.0f, 0.0f),		XMFLOAT2(1.0f, 0.0f)},
 
-			{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
+			{ XMFLOAT4(-1.0f, -1.0f, -1.0f, 1.0f),	XMFLOAT3(0.0f, 0.0f, -1.0f),	XMFLOAT2(0.0f, 1.0f)},
+			{ XMFLOAT4(1.0f, -1.0f, -1.0f, 1.0f),	XMFLOAT3(0.0f, 0.0f, -1.0f),	XMFLOAT2(1.0f, 1.0f)},
+			{ XMFLOAT4(1.0f, 1.0f, -1.0f, 1.0f),	XMFLOAT3(0.0f, 0.0f, -1.0f),	XMFLOAT2(1.0f, 0.0f)},
+			{ XMFLOAT4(-1.0f, 1.0f, -1.0f, 1.0f),	XMFLOAT3(0.0f, 0.0f, -1.0f),	XMFLOAT2(0.0f, 0.0f)},
 
-			{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-			{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
+			{ XMFLOAT4(-1.0f, -1.0f, 1.0f, 1.0f),	XMFLOAT3(0.0f, 0.0f, 1.0f),		XMFLOAT2(1.0f, 1.0f)},
+			{ XMFLOAT4(1.0f, -1.0f, 1.0f, 1.0f),	XMFLOAT3(0.0f, 0.0f, 1.0f),		XMFLOAT2(0.0f, 1.0f)},
+			{ XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),		XMFLOAT3(0.0f, 0.0f, 1.0f),		XMFLOAT2(0.0f, 0.0f)},
+			{ XMFLOAT4(-1.0f, 1.0f, 1.0f, 1.0f),	XMFLOAT3(0.0f, 0.0f, 1.0f),		XMFLOAT2(1.0f, 0.0f)},
 		};
 		D3D11_BUFFER_DESC bd = {};
 		bd.Usage = D3D11_USAGE_DEFAULT;
@@ -235,7 +236,7 @@ private:
 		{
 			for (int x = -50; x < 50; x++)
 			{
-				verts.push_back({ XMFLOAT3((x / 50.0f) * 5.0f, 0.0f, (z / 50.0f) * 5.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), });
+				verts.push_back({ XMFLOAT4((x / 50.0f) * 5.0f, 0.0f, (z / 50.0f) * 5.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), });
 			}
 		}
 
@@ -308,12 +309,16 @@ private:
 		//con->GSSetShader(geoshaderwave.Get(), 0, 0);
 		//con->GSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
 		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
-		con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
+		con->PSSetShader(pixelshaderSolid.Get(), nullptr, 0);
 	
 		con->DrawIndexed(gridIndices.size(), 0, 0);
 		
 		// Reset Geometry Shader so it doesn't affect everything else.
 		//con->GSSetShader(nullptr, 0, 0);
+		con->VSSetShader(vertexshader.Get(), nullptr, 0);
+
+		// Change Topology to Triangles
+		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	}
 
 	// For Skybox Generation
@@ -323,6 +328,183 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11InputLayout>			SKBinput = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	SKBtextureRV = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilState>		depthStencilState = nullptr;
+
+	// Reflection Cube Variables
+	//XMFLOAT4											refCube = {0.1f, 0.0f, 0.2f, 1.0f};
+	//XMFLOAT4											clrCube = {0.4f, 0.4f, 1.0f, 1.0f };
+
+	// Render out the cube that reflects the skybox.
+	void renderReflectionCube(ID3D11DeviceContext* con, ID3D11RenderTargetView* view, ConstantBuffer& cb)
+	{
+		// Render the light sources as cubes (So they are visible)
+		// Set vertex buffer
+		const UINT c_stride[] = { sizeof(SimpleVertex) };
+		const UINT c_offset[] = { 0 };
+		ID3D11Buffer* const c_buffs[] = { c_vertexbuffer.Get() };
+		con->IASetVertexBuffers(0, ARRAYSIZE(c_buffs), c_buffs, c_stride, c_offset);
+
+		// Set Index Buffer
+		con->IASetIndexBuffer(c_indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+		// Start rendering the cube.
+		XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&lightDir[1]));
+		XMMATRIX mLightScale = XMMatrixScaling(0.5f, 0.5f, 0.5f);
+		mLight = mLightScale * mLight;
+
+		// Update the world variable to reflect the current light
+		cb.mWorld = XMMatrixTranspose(mLight);
+		cb.vOutputColor = lightClr[1];
+		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
+		// Be sure the constant buffer is still the contsant buffer.
+		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		con->PSSetShader(pixelshaderSolid.Get(), nullptr, 0);
+
+		// Draw it out
+		con->DrawIndexed(36, 0, 0);
+	}
+
+	// For Render to Texture
+	Microsoft::WRL::ComPtr<ID3D11Texture2D>				RTrenderTargetTexture = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		RTrenderTargetView = nullptr;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	RTshaderResourceView = nullptr;
+
+	XMMATRIX											rtt_View;
+	XMMATRIX											rtt_Projection;
+
+	// Render to Texture Initialization
+	void InitRTT(ID3D11Device* dev, ID3D11DeviceContext* con)
+	{
+		D3D11_TEXTURE2D_DESC textureDesc;
+		D3D11_RENDER_TARGET_VIEW_DESC renderTargetViewDesc;
+		D3D11_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc;
+
+		// Render to Texture
+		// Initialize the texture description.
+		ZeroMemory(&textureDesc, sizeof(textureDesc));
+
+		// Setup the texture description.
+		textureDesc.Width = clientWidth;
+		textureDesc.Height = clientHeight;
+		textureDesc.MipLevels = 1;
+		textureDesc.ArraySize = 1;
+		textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.Usage = D3D11_USAGE_DEFAULT;
+		textureDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		textureDesc.CPUAccessFlags = 0;
+		textureDesc.MiscFlags = 0;
+
+		// Create the texture
+		if(FAILED(dev->CreateTexture2D(&textureDesc, NULL, RTrenderTargetTexture.GetAddressOf())))
+		{
+			DebugBreak();
+			return;
+		}
+
+		// Setup the render target view.
+		renderTargetViewDesc.Format = textureDesc.Format;
+		renderTargetViewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		renderTargetViewDesc.Texture2D.MipSlice = 0;
+
+		// Create the render target view.
+		if(FAILED(dev->CreateRenderTargetView(RTrenderTargetTexture.Get(), &renderTargetViewDesc, RTrenderTargetView.GetAddressOf())))
+		{
+			DebugBreak();
+			return;
+		}
+
+		// Setup the shader resource view.
+		shaderResourceViewDesc.Format = textureDesc.Format;
+		shaderResourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		shaderResourceViewDesc.Texture2D.MostDetailedMip = 0;
+		shaderResourceViewDesc.Texture2D.MipLevels = 1;
+
+		// Create the shader resource view.
+		if(FAILED(dev->CreateShaderResourceView(RTrenderTargetTexture.Get(), &shaderResourceViewDesc, RTshaderResourceView.GetAddressOf())))
+		{
+			DebugBreak();
+			return;
+		}
+
+		// Initialize the view matrix
+		XMVECTOR Eye = XMVectorSet(0.0f, 1.0f + 15.0f, -5.0f, 100.0f);
+		XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+		XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+		rtt_View = XMMatrixLookAtLH(Eye, At, Up);
+
+		// Orthographic Projection Matrix
+		rtt_Projection = XMMatrixOrthographicLH(8, 8, nearP, farP);
+		// Isometric Projection Matrix
+		//rtt_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, nearP, farP);
+	}
+
+	// Draw the object in the seperate 'scene'
+	void DrawBehind(ID3D11DeviceContext* con, ID3D11RenderTargetView* view, ConstantBuffer& cb, UINT size)
+	{
+		ID3D11DepthStencilView* depthview = nullptr;
+		+d3d11.GetDepthStencilView((void**)&depthview);
+		float clr[] = { 0.2f, 0.2f, 0.5f, 1 };
+
+		con->ClearRenderTargetView(RTrenderTargetView.Get(), clr);
+
+		con->OMSetRenderTargets(1, RTrenderTargetView.GetAddressOf(), depthview);
+
+		//cb.mWorld = XMMatrixTranspose(rtt_World);
+		cb.mView = XMMatrixTranspose(rtt_View);
+		cb.mProjection = XMMatrixTranspose(rtt_Projection);
+		cb.vOutputColor = { 1.0f, 0.5f, 1.0f, 1.0f };
+		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
+		con->DrawIndexed(size, 0, 0);
+
+		con->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthview);
+		con->ClearDepthStencilView(depthview, D3D11_CLEAR_DEPTH, 1.0f, 0);
+		depthview->Release();
+
+		XMVECTOR det;
+		cb.mWorld = g_World;
+		cb.mView = XMMatrixTranspose(XMMatrixInverse(&det, g_View));
+		cb.mProjection = XMMatrixTranspose(g_Projection);
+		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+	}
+
+	XMFLOAT4											posRTTCube = {0.0f, 2.5f, 0.0f, 1.0f};
+	XMFLOAT4											clrRTTCube = {1.0f, 1.0f, 1.0f, 1.0f };
+
+	void RenderRTT(ID3D11DeviceContext* con, ID3D11RenderTargetView* view, ConstantBuffer& cb, UINT size)
+	{
+		// Set vertex buffer
+		const UINT c_stride[] = { sizeof(SimpleVertex) };
+		const UINT c_offset[] = { 0 };
+		ID3D11Buffer* const c_buffs[] = { c_vertexbuffer.Get() };
+		con->IASetVertexBuffers(0, ARRAYSIZE(c_buffs), c_buffs, c_stride, c_offset);
+
+		// Set Index Buffer
+		con->IASetIndexBuffer(c_indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+		// Start rendering the cube.
+		XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&posRTTCube));
+		XMMATRIX mLightScale = XMMatrixScaling(1, 1, 1);
+		mLight = mLightScale * mLight;
+
+		// Update the world variable to reflect the current light
+		cb.mWorld = XMMatrixTranspose(mLight);
+		//cb.mView = rtt_View;
+		//cb.mProjection = rtt_Projection;
+		cb.vOutputColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
+
+		// Be sure the constant buffer is still the contsant buffer.
+		con->PSSetShader(pixelshaderNoLights.Get(), nullptr, 0);
+		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		con->PSSetShaderResources(0, 1, RTshaderResourceView.GetAddressOf());
+		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
+
+		// Draw it out
+		con->DrawIndexed(size, 0, 0);
+	}
+
 public:
 
 	Mesh(GW::GRAPHICS::GDirectX11Surface _d3d11, GW::SYSTEM::GWindow _win, SimpleMesh* _mesh, const wchar_t* texturePath, const wchar_t* normPath) : DrawClass(_d3d11, _win)
@@ -398,7 +580,7 @@ public:
 			return;
 		}
 
-		// Create the vertex shader for thew wave.
+		// Create the vertex shader for the wave.
 		if (FAILED(dev->CreateVertexShader(pVSBlob->GetBufferPointer(), pVSBlob->GetBufferSize(), nullptr, vertexshaderwave.GetAddressOf())))
 		{
 			DebugBreak();
@@ -409,7 +591,7 @@ public:
 		// Define the input layout
 		D3D11_INPUT_ELEMENT_DESC layout[] =
 		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
@@ -445,9 +627,9 @@ public:
 		// Define the input layout
 		D3D11_INPUT_ELEMENT_DESC SKBlayout[] =
 		{
-			{ "SV_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "SV_POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 2, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 		numElements = ARRAYSIZE(SKBlayout);
 
@@ -522,11 +704,30 @@ public:
 		}
 
 		// Create the pixel shader
-		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, pixelshaderLights.GetAddressOf())))
+		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, pixelshaderSolid.GetAddressOf())))
 		{
 			pPSBlob->Release();
 			return;
 		}
+
+		// Compile the unique lighting pixel shader
+		pPSBlob = nullptr;
+		if (FAILED(DrawClass::CompileShaderFromFile(L"Shaders\\shaders.fx", "PSNoLights", "ps_4_0", &pPSBlob)))
+		{
+			MessageBox(nullptr,
+				L"The FX file cannot be compiled.  Please run this executable from the directory that contains the FX file.", L"Error", MB_OK);
+			DebugBreak();
+			return;
+		}
+
+		// Create the unique pixel shader
+		if (FAILED(dev->CreatePixelShader(pPSBlob->GetBufferPointer(), pPSBlob->GetBufferSize(), nullptr, pixelshaderNoLights.GetAddressOf())))
+		{
+			pPSBlob->Release();
+			DebugBreak();
+			return;
+		}
+		pPSBlob->Release();
 
 		// Compile the unique lighting pixel shader
 		pPSBlob = nullptr;
@@ -681,6 +882,8 @@ public:
 			lightClr[1] = { 0.0f, 0.8f, 0.8f, 1.0f };
 		}
 
+		InitRTT(dev, con);
+
 		con->Release();
 		dev->Release();
 		return;
@@ -801,7 +1004,35 @@ public:
 		con->PSSetShaderResources(1, 1, normRV.GetAddressOf());
 		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
 		// Draw out the mesh
+		//con->DrawIndexed(mesh->indicesList.size(), 0, 0);
+
+		// Reset Geometry Shader so it doesn't affect everything else.
+		con->GSSetShader(nullptr, 0, 0);
+
+		DrawBehind(con, view, cb, mesh->indicesList.size());
+
+		// Set Index Buffer
+		con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+
+		// Set Vertex Shader
+		con->VSSetShader(vertexshader.Get(), nullptr, 0);
+		con->VSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		// Set the Geometry Shader
+		con->GSSetShader(geoshader.Get(), 0, 0);
+		con->GSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		// Set Pixel Shader
+		con->PSSetShader(pixelshader.Get(), nullptr, 0);
+		con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
+		con->PSSetShaderResources(0, 1, textureRV.GetAddressOf());
+		con->PSSetShaderResources(1, 1, normRV.GetAddressOf());
+		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
+		// Draw out the mesh
 		con->DrawIndexed(mesh->indicesList.size(), 0, 0);
+
+		// Reset Geometry Shader so it doesn't affect everything else.
+		con->GSSetShader(nullptr, 0, 0);
+
+		//DrawBehind(con, view, cb, mesh->indicesList.size());
 
 		// Render the light sources as cubes (So they are visible)
 		// Set vertex buffer
@@ -812,9 +1043,6 @@ public:
 
 		// Set Index Buffer
 		con->IASetIndexBuffer(c_indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-
-		// Reset Geometry Shader so it doesn't affect everything else.
-		con->GSSetShader(nullptr, 0, 0);
 
 		// Render the lighting sources as a cube.
 		for (int i = 0; i < 2; i++)
@@ -833,7 +1061,7 @@ public:
 
 				// Be sure the constant buffer is still the contsant buffer.
 				con->PSSetConstantBuffers(0, 1, constantbuffer.GetAddressOf());
-				con->PSSetShader(pixelshaderLights.Get(), nullptr, 0);
+				con->PSSetShader(pixelshaderSolid.Get(), nullptr, 0);
 			}
 			// Directional Light
 			else
@@ -858,7 +1086,7 @@ public:
 		{
 			XMFLOAT4 skyPos = {0, 0, 0, 0};
 			XMMATRIX mSky = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&skyPos));
-			XMMATRIX mScaleSky = XMMatrixScaling(1.0f, 1.5f, 1.0f);
+			XMMATRIX mScaleSky = XMMatrixScaling(1.0f, 2.0f, 1.0f);
 			mSky = mScaleSky * mSky;
 
 			// Update world variable for skybox
@@ -878,9 +1106,16 @@ public:
 			con->DrawIndexed(36, 0, 0);
 			con->OMSetDepthStencilState(NULL, 0);
 		}
+		//DrawBehind(con, view, cb, 36);
 		con->IASetInputLayout(input.Get());
+
 		// Render the Grid
 		RenderGrid(con, view, cb);
+		//DrawBehind(con, view, cb, gridIndices.size());
+
+		//renderReflectionCube(con, view, cb);
+
+		RenderRTT(con, view, cb, 36);
 
 		timePerFrame = timeCur;
 
