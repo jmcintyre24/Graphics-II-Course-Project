@@ -47,3 +47,4 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Vertex Shader Wave. (Modified vertex grid base don sine wave.)
 - [x] Render to Texture. (Rendering out an offscreen scene to a texture on a 3D object.)
 - [x] Functional spot light added with cone attentuation.
+- [x] Second View Port added.

@@ -112,6 +112,9 @@ private:
 	XMMATRIX											g_World;
 	XMMATRIX											g_View;
 	XMMATRIX											g_Projection;
+	XMMATRIX											stor_World;
+	XMMATRIX											stor_View;
+	XMMATRIX											stor_Projection;
 
 	bool doFlip = false;
 	bool moveDirLight = false;
@@ -302,7 +305,7 @@ private:
 		XMFLOAT4 pos = { 0.0f, -0.5f, 0.0f, 0.0f };
 		XMMATRIX w_Grid = XMMatrixTranslationFromVector(5.0f * XMLoadFloat4(&pos));
 		cb.mWorld = XMMatrixTranspose(w_Grid);
-		cb.vOutputColor = {1.0f, 1.0f, 1.0f, 1.0f};
+		cb.vOutputColor = {0.1f, 0.2f, 1.0f, 1.0f};
 		con->UpdateSubresource(constantbuffer.Get(), 0, nullptr, &cb, 0, 0);
 
 		// Update VS, GS, and PS's constant buffer to unique
@@ -371,8 +374,13 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView>		RTrenderTargetView = nullptr;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>	RTshaderResourceView = nullptr;
 
+	XMMATRIX											vp_two_World;
+	XMMATRIX											vp_two_View;
+	XMMATRIX											vp_two_Projection;
+
 	XMMATRIX											rtt_View;
 	XMMATRIX											rtt_Projection;
+	float clr[4] = { 0.2f, 0.2f, 0.5f, 1 };
 
 	// Render to Texture Initialization
 	void InitRTT(ID3D11Device* dev, ID3D11DeviceContext* con)
@@ -446,7 +454,6 @@ private:
 	{
 		ID3D11DepthStencilView* depthview = nullptr;
 		+d3d11.GetDepthStencilView((void**)&depthview);
-		float clr[] = { 0.2f, 0.2f, 0.5f, 1 };
 
 		con->ClearRenderTargetView(RTrenderTargetView.Get(), clr);
 
@@ -506,6 +513,10 @@ private:
 		// Draw it out
 		con->DrawIndexed(size, 0, 0);
 	}
+
+	D3D11_VIEWPORT										vp_one = { 0, 0, (float) clientWidth, (float) clientHeight, 0, 1, };
+
+	D3D11_VIEWPORT										vp_two = { (float) clientWidth / 1.5f, 0, (float) clientWidth / 3.0f, (float) clientHeight / 3.0f, 0, 1, };
 
 public:
 
@@ -889,12 +900,20 @@ public:
 
 		InitRTT(dev, con);
 
+		// Setup viewport two's perspective and view matrices.
+		Eye = XMVectorSet(0.0f, 3.0f, -1.0f, 1.0f);
+		At = XMVectorSet(0.0f, -2.0f, 0.0f, 0.0f);
+		Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+		vp_two_View = XMMatrixLookAtLH(Eye, At, Up);
+
+		vp_two_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, nearP, farP);
+
 		con->Release();
 		dev->Release();
 		return;
 	}
 
-	void Render()
+	void Render(UINT flag = 1)
 	{
 		if (mesh == nullptr)
 			return;
@@ -929,6 +948,13 @@ public:
 		d3d11.GetImmediateContext((void**)&con);
 		d3d11.GetRenderTargetView((void**)&view);
 		
+		// Set the viewport.
+		//con->ClearRenderTargetView(renderTargetView.Get(), clr);
+		if (flag == 1)
+			con->RSSetViewports(1, &vp_one);
+		else
+			con->RSSetViewports(1, &vp_two);
+
 		// Set Primitive Topology
 		con->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -951,8 +977,6 @@ public:
 				doFlip = false;
 		}
 
-		std::cout << cone << '\n';
-
 		// Rotate the directional light around the origin
 		if (!moveDirLight)
 		{
@@ -972,7 +996,10 @@ public:
 		ConstantBuffer cb;
 		cb.mWorld = XMMatrixTranspose(g_World);
 		XMVECTOR det;
-		cb.mView = XMMatrixTranspose(XMMatrixInverse(&det, g_View));
+		if (flag == 1)
+			cb.mView = XMMatrixTranspose(XMMatrixInverse(&det, g_View));
+		else
+			cb.mView = XMMatrixTranspose(g_View);
 		cb.mProjection = XMMatrixTranspose(g_Projection);
 		// Directional Light [0]
 		cb.lightDir[0] = lightDir[0];
@@ -1021,7 +1048,8 @@ public:
 		// Reset Geometry Shader so it doesn't affect everything else.
 		con->GSSetShader(nullptr, 0, 0);
 
-		DrawBehind(con, view, cb, mesh->indicesList.size());
+		if(flag == 1)
+			DrawBehind(con, view, cb, mesh->indicesList.size());
 
 		// Set Index Buffer
 		con->IASetIndexBuffer(indexbuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
@@ -1038,13 +1066,12 @@ public:
 		con->PSSetShaderResources(0, 1, textureRV.GetAddressOf());
 		con->PSSetShaderResources(1, 1, normRV.GetAddressOf());
 		con->PSSetSamplers(0, 1, samplerLinear.GetAddressOf());
+
 		// Draw out the mesh
 		con->DrawIndexed(mesh->indicesList.size(), 0, 0);
 
 		// Reset Geometry Shader so it doesn't affect everything else.
 		con->GSSetShader(nullptr, 0, 0);
-
-		//DrawBehind(con, view, cb, mesh->indicesList.size());
 
 		// Render the light sources as cubes (So they are visible)
 		// Set vertex buffer
@@ -1144,8 +1171,33 @@ public:
 		//DrawBehind(con, view, cb, gridIndices.size());
 
 		//renderReflectionCube(con, view, cb);
-
+		
 		RenderRTT(con, view, cb, 36);
+
+		// First passthrough for first VP.
+		if (flag == 1)
+		{
+			// Store the current world
+			stor_World = g_World;
+			vp_two_World = g_World;
+			g_World = vp_two_World;
+			// And view
+			stor_View = g_View;
+			g_View = vp_two_View;
+			// And projection
+			stor_Projection = g_Projection;
+			g_Projection = vp_two_Projection;
+
+			// Render with the second VP now.
+			Render(2);
+		}
+		// Second passthrough for second VP.
+		else if (flag == 2)
+		{
+			g_World = stor_World;
+			g_View = stor_View;
+			g_Projection = stor_Projection;
+		}
 
 		timePerFrame = timeCur;
 
@@ -1290,48 +1342,6 @@ public:
 			int diffX = (cosX - cursorPos.x);
 			int diffY = (cosY - cursorPos.y);
 
-			//if (diffX < -mouseThreshold)
-			//{
-			//	g_View *= XMMatrixRotationY(-0.05f);
-			//}
-			//else if (diffX > mouseThreshold)
-			//{
-			//	g_View *= XMMatrixRotationY(0.05f);
-			//}
-
-			//if (diffY < -mouseThreshold)
-			//{
-			//	XMMATRIX oldView = g_View;
-
-			//	g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-
-			//	g_View *= XMMatrixRotationX(-0.05f);
-
-			//	g_View = XMMatrixMultiply(g_View, oldView);
-
-			//}
-			//else if (diffY > mouseThreshold)
-			//{
-			//	XMMATRIX oldView = g_View;
-
-			//	g_View = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-
-			//	g_View *= XMMatrixRotationX(0.05f);
-			//	XMVECTOR pos = oldView.r[3];
-			//	g_View = XMMatrixMultiply(g_View, oldView);
-
-			//	XMMATRIX newView = {
-			//		XMVectorGetX(g_View.r[0]), XMVectorGetY(g_View.r[0]), XMVectorGetZ(g_View.r[0]), XMVectorGetW(g_View.r[0]),
-			//		XMVectorGetX(g_View.r[1]), XMVectorGetY(g_View.r[1]), XMVectorGetZ(g_View.r[1]), XMVectorGetW(g_View.r[1]),
-			//		XMVectorGetX(g_View.r[2]), XMVectorGetY(g_View.r[2]), XMVectorGetZ(g_View.r[2]), XMVectorGetW(g_View.r[2]),
-			//		XMVectorGetX(pos), XMVectorGetY(pos), XMVectorGetZ(pos), XMVectorGetW(pos),
-			//	};
-
-			//	g_View = newView;
-
-			//	// g_View *= XMMatrixRotationX(0.05f);
-			//}
-
 			// Block input outside of 125 pixels away from center.
 			if (abs(diffX) < 125 && abs(diffY) < 125)
 			{
@@ -1372,36 +1382,11 @@ public:
 				else
 				{
 					// Create the rotation matrix based on mouse input.
-					XMMATRIX rot = XMMatrixRotationRollPitchYaw(-diffY / 50.0f, -diffX / 50.0f, 0);
+					XMMATRIX rot = XMMatrixRotationRollPitchYaw(diffY / 125.0f, diffX / 125.0f, 0);
 
 					g_View = XMMatrixMultiply(rot, g_View);
 				}
 			}
-
-			// Block input outside of 125 pixels away from center.
-			//if (abs(diffX) < 125 && abs(diffY) < 125)
-			//{
-			//	XMMATRIX rotX = XMMatrixRotationY(diffX / 150.0f);
-			//	XMMATRIX rotY = XMMatrixRotationX(diffY / 150.0f);
-
-			//	g_View = XMMatrixMultiply(g_View, rotX);
-			//	// Save W axis before rotation
-			//	XMVECTOR pos = g_View.r[3];
-			//	g_View = XMMatrixMultiply(rotY, g_View);
-			//	//XMVECTOR pos = { 1, 1, 1 };
-			//	// Apply old W axis to prevent translation from rotations^
-			//	XMMATRIX newView = {
-			//		XMVectorGetX(g_View.r[0]), XMVectorGetY(g_View.r[0]), XMVectorGetZ(g_View.r[0]), XMVectorGetW(g_View.r[0]),
-			//		XMVectorGetX(g_View.r[1]), XMVectorGetY(g_View.r[1]), XMVectorGetZ(g_View.r[1]), XMVectorGetW(g_View.r[1]),
-			//		XMVectorGetX(g_View.r[2]), XMVectorGetY(g_View.r[2]), XMVectorGetZ(g_View.r[2]), XMVectorGetW(g_View.r[2]),
-			//		XMVectorGetX(pos), XMVectorGetY(pos), XMVectorGetZ(pos), XMVectorGetW(g_View.r[3]),
-			//	};
-
-
-			//	g_View = newView;
-
-			//	//XMVectorGetW(newX, g_View.r[0]);
-			//}
 
 			//Set it back to the center
 			SetCursorPos(cosX, cosY);
