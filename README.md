@@ -43,8 +43,9 @@ Along with that, the cube that is the directional light has the unique pixel sha
 - [x] Simple Camera Zoom
 #### Milestone 3
 - [x] Manually Adjustable near- and far- clip-planes.
-- [x] Proceduraly Created Geometry done in Geometry Shader. *(Borderline/Unsure Implemented a geometry shader that uses the existing mesh and creates smaller versions and 'spilt' versions to generate cheap rocks procedurally.)*
-- [x] Vertex Shader Wave. (Modified vertex grid base don sine wave.)
+- [x] Proceduraly Created Geometry done in Geometry Shader. *(Borderline/Unsure -> Implemented a geometry shader that uses the existing mesh and creates a smaller version and 'spilt' smaller versions to generate cheap rocks procedurally.)*
+- [x] Vertex Shader Wave. (Modified vertex grid based on sine wave.)
 - [x] Render to Texture. (Rendering out an offscreen scene to a texture on a 3D object.)
 - [x] Functional spot light added with cone attentuation.
 - [x] Second View Port added.
+- [x] Dynamic position and direction on spot light.

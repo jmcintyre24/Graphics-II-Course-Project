@@ -84,6 +84,7 @@ private:
 		XMFLOAT4 lightDir[3];
 		XMFLOAT4 lightClr[3];
 		XMFLOAT4 vOutputColor;
+		XMFLOAT4 spotLightPos;
 		float time;
 		float cone;
 	};
@@ -123,7 +124,7 @@ private:
 	float zoom = 0;
 	float nearP = 0.01f, farP = 100.0f;
 
-	XMFLOAT4 lightDir[3], lightClr[3]; // Should've used a structure here - Note for 'next' time.
+	XMFLOAT4 lightDir[3], lightClr[3], spotlightPos; // Should've used a structure here - Note for 'next' time.
 	float cone = 20.0f;
 	SimpleMesh* mesh = nullptr;
 
@@ -896,17 +897,20 @@ public:
 			// Spot Light
 			lightDir[2] = { 0.0f, 0.577f, -0.577f, 1.0f };
 			lightClr[2] = { 1.0f, 0.0f, 0.0f, 1.0f };
+			spotlightPos = { 0.0f, 2.0f, -2.0f, 1.0f};
 		}
 
 		InitRTT(dev, con);
 
 		// Setup viewport two's perspective and view matrices.
-		Eye = XMVectorSet(0.0f, 3.0f, -1.0f, 1.0f);
+		Eye = XMVectorSet(0.0f, 75.0f, -1.0f, 1.0f);
 		At = XMVectorSet(0.0f, -2.0f, 0.0f, 0.0f);
 		Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 		vp_two_View = XMMatrixLookAtLH(Eye, At, Up);
 
-		vp_two_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, nearP, farP);
+		//vp_two_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, DrawClass::width / (FLOAT)DrawClass::height, nearP, farP);
+
+		vp_two_Projection = XMMatrixOrthographicLH(10, 8, nearP, farP);
 
 		con->Release();
 		dev->Release();
@@ -933,7 +937,7 @@ public:
 		tTotal += t * 2.0f;
 
 		// Reset the total time with that of the sine wave. (2 * pi)
-		if (tTotal > 6.28f)
+		if (tTotal > 6.28f * 2.0f) // I lowered the speed by half, so it's going to take twice as long now.
 			tTotal = 0;
 
 		// To cause a pulse for the Unique Pixel Shader
@@ -961,18 +965,23 @@ public:
 		// Update the point light for attenuation
 		if (!doFlip)
 		{
+			// Point Light
 			lightClr[1].y -= t;
 			lightClr[1].z -= t;
-			cone -= t;
+			// Spot Light
+			//cone -= t;
 
 			if(!XMVector3GreaterOrEqual({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.0f,0.1f,0.1f }))
 				doFlip = true;
 		}
 		else if (doFlip)
 		{
+			// Point Light
 			lightClr[1].y += t;
 			lightClr[1].z += t;
-			cone += t;
+			// Spot Light
+			//cone += t;
+
 			if (XMVector3GreaterOrEqual({ lightClr[1].x, lightClr[1].y, lightClr[1].z }, { 0.0f, 0.9f, 0.9f }))
 				doFlip = false;
 		}
@@ -992,6 +1001,18 @@ public:
 		vLightDir = XMVector3Transform(vLightDir, mRotate);
 		XMStoreFloat4(&lightDir[1], vLightDir);
 
+		// Rotate the spotlight's position
+		mRotate = XMMatrixRotationY(-0.1f * t);
+		vLightDir = XMLoadFloat4(&spotlightPos);
+		vLightDir = XMVector3Transform(vLightDir, mRotate);
+		XMStoreFloat4(&spotlightPos, vLightDir);
+
+		// Rotate the direction
+		mRotate = XMMatrixRotationY(2.0f * t);
+		vLightDir = XMLoadFloat4(&lightDir[2]);
+		vLightDir = XMVector3Transform(vLightDir, mRotate);
+		XMStoreFloat4(&lightDir[2], vLightDir);
+
 		// Constant Buffer to communicate with the shader's values on the GPU
 		ConstantBuffer cb;
 		cb.mWorld = XMMatrixTranspose(g_World);
@@ -1010,6 +1031,7 @@ public:
 		// Spot Light [2]
 		cb.lightDir[2] = lightDir[2];
 		cb.lightClr[2] = lightClr[2];
+		cb.spotLightPos = spotlightPos;
 		cb.vOutputColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 		cb.time = tTotal;
 		cb.cone = cone;
@@ -1121,8 +1143,7 @@ public:
 			// Spot Light
 			else
 			{
-				XMVECTOR lightPos = { 0.0f, 2.0f, -2.0f, 1.0f};
-				XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * lightPos);
+				XMMATRIX mLight = XMMatrixTranslationFromVector(1.0f * XMLoadFloat4(&spotlightPos));
 				XMMATRIX mLightScale = XMMatrixScaling(0.05f, 0.05f, 0.05f);
 				mLight = mLightScale * mLight;
 
@@ -1168,10 +1189,10 @@ public:
 
 		// Render the Grid
 		RenderGrid(con, view, cb);
-		//DrawBehind(con, view, cb, gridIndices.size());
 
 		//renderReflectionCube(con, view, cb);
 		
+		// Render stone henge cube out.
 		RenderRTT(con, view, cb, 36);
 
 		// First passthrough for first VP.

@@ -12,6 +12,7 @@ cbuffer ConstantBuffer : register(b0) // b for constant buffers
     float4 vLightDir[3];
     float4 vLightColor[3];
     float4 vOutputColor;
+    float4 spotLightPos;
     float time;
     float cone;
 }
@@ -65,7 +66,7 @@ PS_INPUT VSWave(VS_INPUT input)
 {
     PS_INPUT output = (PS_INPUT) 0;
     output.Pos = mul(input.Pos, World);
-    output.Pos.y += 0.5f * sin(1 * output.Pos.x + time);
+    output.Pos.y += 0.5f * sin(output.Pos.x + 0.5f* time);
     output.Pos = mul(output.Pos, View);
     output.Pos = mul(output.Pos, Projection);
     output.worldPos = mul(input.Pos, World);
@@ -166,7 +167,8 @@ void GS(triangle PS_INPUT input[3], inout TriangleStream<PS_INPUT> output)
 void GSWave(line PS_INPUT input[2], inout LineStream<PS_INPUT> output) // Unused, but kept in here for reference and experimentation.
 {
     // Get the base values in world space.
-    input[0].Pos = input[0].worldPos;
+    input[0].Pos = input[0].
+worldPos;
     input[1].Pos = input[1].worldPos;
     
     // Modify them
@@ -231,8 +233,7 @@ float4 PS(PS_INPUT input) : SV_Target
         // Spot Light
         else if (i == 2)
         {
-            float4 lightPos = { 0.0f, 2.0f, -2.0f, 1.0f };
-            float4 lightDir = normalize(lightPos - input.worldPos); // Light direction.
+            float4 lightDir = normalize(spotLightPos - input.worldPos); // Light direction.
             float surfaceratio = saturate(dot(lightDir, vLightDir[i]));
             float coneRatio = cone / 25.0f;
             int spotfactor = (surfaceratio > coneRatio) ? 1 : 0; // Hardcoded cone ratio <- bad me

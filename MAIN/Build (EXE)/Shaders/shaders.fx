@@ -9,12 +9,15 @@ cbuffer ConstantBuffer : register(b0) // b for constant buffers
     matrix World;
     matrix View;
     matrix Projection;
-    float4 vLightDir[2];
-    float4 vLightColor[2];
+    float4 vLightDir[3];
+    float4 vLightColor[3];
     float4 vOutputColor;
+    float4 spotLightPos;
+    float time;
+    float cone;
 }
 
-cbuffer UniqueBuffer : register(b1)
+cbuffer UniqueBuffer : register(b1) // Definitly unncessary use here.
 {
     float4 timePos;
 }
@@ -40,7 +43,7 @@ struct SKYBOX_VS_INPUT
 {
     float4 Pos : SV_POSITION;
     float3 Norm : NORMAL;
-    float3 Tex : TEXCOORD0;
+    float3 Tex : TEXCOORD2;
 };
 
 //--------------------------------------------------------------------------------------
@@ -50,6 +53,20 @@ PS_INPUT VS(VS_INPUT input)
 {
     PS_INPUT output = (PS_INPUT) 0;
     output.Pos = mul(input.Pos, World);
+    output.Pos = mul(output.Pos, View);
+    output.Pos = mul(output.Pos, Projection);
+    output.worldPos = mul(input.Pos, World);
+    output.Norm = mul(float4(input.Norm, 1), World).xyz;
+    output.Tang = mul(input.Pos, World);
+    output.Tex = input.Tex;
+    return output;
+}
+
+PS_INPUT VSWave(VS_INPUT input)
+{
+    PS_INPUT output = (PS_INPUT) 0;
+    output.Pos = mul(input.Pos, World);
+    output.Pos.y += 0.5f * sin(output.Pos.x + 0.5f* time);
     output.Pos = mul(output.Pos, View);
     output.Pos = mul(output.Pos, Projection);
     output.worldPos = mul(input.Pos, World);
@@ -69,12 +86,112 @@ SKYBOX_VS_INPUT SKYBOX_VS(SKYBOX_VS_INPUT input)
 }
 
 //--------------------------------------------------------------------------------------
+// Geometry Shaders
+//--------------------------------------------------------------------------------------
+#define triCountOut 12
+[maxvertexcount(triCountOut)]
+void GS(triangle PS_INPUT input[3], inout TriangleStream<PS_INPUT> output)
+{
+    PS_INPUT simple[triCountOut];
+    simple[0] = input[0];
+    simple[1] = input[1];
+    simple[2] = input[2];
+    
+    // Set everything other than the 'base' to the 'base'
+    for (int i = 3; i < triCountOut; i += 3)
+    {
+        simple[i] = simple[0];
+        simple[i].Pos = simple[0].worldPos; // Set the position to the world so we can make it stay stationary.
+        simple[i + 1] = simple[1];
+        simple[i + 1].Pos = simple[1].worldPos;
+        simple[i + 2] = simple[2];
+        simple[i + 2].Pos = simple[2].worldPos;
+    }
+
+    // First Little rock.
+    for (int x = 3; x < 6; x++)
+    {
+        // Scale
+        simple[x].Pos.x *= 0.25f;
+        simple[x].Pos.y *= 0.25f;
+        simple[x].Pos.z *= 0.25f;
+        // Movement
+        simple[x].Pos.x += 0.85f;
+        simple[x].Pos.y -= 0.2f;
+        simple[x].Pos.z += 0.5f;
+    }
+    
+    // Second Little rock.
+    for (int x = 6; x < 9; x++)
+    {
+        // Scale
+        simple[x].Pos.x *= 0.25f;
+        simple[x].Pos.y *= 0.25f;
+        simple[x].Pos.z *= 0.25f;
+        // Movement
+        simple[x].Pos.x -= 0.75f;
+        simple[x].Pos.y -= 0.25;
+        simple[x].Pos.z -= 0.5f;
+    }
+    
+    // Third Little rock.
+    for (int x = 9; x < 12; x++)
+    {
+        // Scale
+        simple[x].Pos.x *= 0.0625f;
+        simple[x].Pos.y *= 0.0625f;
+        simple[x].Pos.z *= 0.0625f;
+        // Movement
+        simple[x].Pos.x += 0.05f;
+        simple[x].Pos.y += 0.27f;
+        simple[x].Pos.z += 0.05f;
+    }
+    
+    // Loop through and append everything to the stream.
+    for (int z = 0; z < triCountOut; z++)
+    {
+        if(z >= 3) // Render the mesh 'normally' since we're using the mesh itself as the base, then restart the output strip and redo the points here.
+        {
+            if (fmod(z, 3) == 0 || simple[z].Pos.y < -0.1f) // Every three vertices, cut the output.
+            {
+                output.RestartStrip();
+            }
+            simple[z].Pos = mul(simple[z].Pos, View);
+            simple[z].Pos = mul(simple[z].Pos, Projection);  
+        }
+        output.Append(simple[z]);
+    }
+}
+
+[maxvertexcount(2)]
+void GSWave(line PS_INPUT input[2], inout LineStream<PS_INPUT> output) // Unused, but kept in here for reference and experimentation.
+{
+    // Get the base values in world space.
+    input[0].Pos = input[0].
+worldPos;
+    input[1].Pos = input[1].worldPos;
+    
+    // Modify them
+    input[0].Pos.y += 0.5f * sin(1 * input[0].Pos.x + 1 * time);
+    input[1].Pos.y += 0.5f * sin(1 * input[1].Pos.x + 1 * time);
+    
+    // Loop through and append everything to the stream.
+    for (int i = 0; i < 2; i++)
+    {
+        // Output them
+        input[i].Pos = mul(input[i].Pos, View);
+        input[i].Pos = mul(input[i].Pos, Projection);
+        output.Append(input[i]);
+    }
+}
+
+//--------------------------------------------------------------------------------------
 // Pixel Shaders
 //--------------------------------------------------------------------------------------
 float4 PS(PS_INPUT input) : SV_Target
 {
     // Have this value up to 0.075f for some ambient light.
-    float4 finalColor = 0.075f;
+    float4 finalColor = 0.050f;
         
     // Normal Map
     if (abs(input.Norm[0]) > 0)
@@ -94,7 +211,7 @@ float4 PS(PS_INPUT input) : SV_Target
     
     
     // Apply Lighting
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         // Directional Lighting
         if(i == 0)
@@ -113,6 +230,23 @@ float4 PS(PS_INPUT input) : SV_Target
                 finalColor += saturate(dot((float3) lightDir, input.Norm) * vLightColor[i]);
             }
         }
+        // Spot Light
+        else if (i == 2)
+        {
+            float4 lightDir = normalize(spotLightPos - input.worldPos); // Light direction.
+            float surfaceratio = saturate(dot(lightDir, vLightDir[i]));
+            float coneRatio = cone / 25.0f;
+            int spotfactor = (surfaceratio > coneRatio) ? 1 : 0; // Hardcoded cone ratio <- bad me
+            float distance = length(lightDir);
+            float lightRatio = saturate(dot((float3) lightDir, input.Norm));
+            
+            // For Attenuation
+            float innerConeRatio = (cone + 0.25f) / 25.0f;
+            float atten = 1.0f - saturate((innerConeRatio - surfaceratio) / (innerConeRatio - coneRatio));
+            
+            // Apply the spotlight color.
+            finalColor += saturate(spotfactor * lightRatio * vLightColor[i] * finalColor * atten);
+        }
     }
     
     finalColor *= txDiffuse.Sample(samLinear, input.Tex);
@@ -124,7 +258,16 @@ float4 PS(PS_INPUT input) : SV_Target
 
 float4 PSSolid(PS_INPUT input) : SV_Target
 {
-    return vOutputColor;
+    float4 finalColor = vOutputColor;
+    float4 refColor = skybox.Sample(samLinear, input.Tang);
+    return finalColor * refColor;
+}
+
+float4 PSNoLights(PS_INPUT input) : SV_Target
+{    
+    //float2 UV = { 0.5076, .5276 };
+    float4 color = txDiffuse.Sample(samLinear, input.Tex);
+    return color;
 }
 
 // Create a pulsation on the color w/ color change on position.
