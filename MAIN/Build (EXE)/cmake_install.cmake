@@ -1,8 +1,8 @@
-# Install script for directory: D:/Graphics-II-Course-Project/MAIN/Project
+# Install script for directory: E:/DEV4/Graphics-II-Course-Project/MAIN/Project
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "D:/Graphics-II-Course-Project/MAIN/Project/out/install/x64-Debug")
+  set(CMAKE_INSTALL_PREFIX "E:/DEV4/Graphics-II-Course-Project/MAIN/Project/out/install/x64-Release")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -12,7 +12,7 @@ if(NOT DEFINED CMAKE_INSTALL_CONFIG_NAME)
     string(REGEX REPLACE "^[^A-Za-z0-9_]+" ""
            CMAKE_INSTALL_CONFIG_NAME "${BUILD_TYPE}")
   else()
-    set(CMAKE_INSTALL_CONFIG_NAME "Debug")
+    set(CMAKE_INSTALL_CONFIG_NAME "RelWithDebInfo")
   endif()
   message(STATUS "Install configuration: \"${CMAKE_INSTALL_CONFIG_NAME}\"")
 endif()
@@ -40,5 +40,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "D:/Graphics-II-Course-Project/MAIN/Project/out/build/x64-Debug/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "E:/DEV4/Graphics-II-Course-Project/MAIN/Project/out/build/x64-Release/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

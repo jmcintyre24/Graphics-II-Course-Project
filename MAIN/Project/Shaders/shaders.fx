@@ -225,7 +225,7 @@ float4 PS(PS_INPUT input) : SV_Target
             float distance = length(lightDir);
             
             // Apply the point light to the color if within range.
-            if (distance <= 1.5f)
+            if (distance <= 1.0f)
             {
                 finalColor += saturate(dot((float3) lightDir, input.Norm) * vLightColor[i]);
             }
