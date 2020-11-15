@@ -1,11 +1,11 @@
 # Graphics-II-Course-Project
 Graphics II Project Repository
 
-# Prerequisites
+# Prerequisites to Run
 [x64 Microsoft Redistributable for versions 2015/2017/2019](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads)
 
 ## Overview
-This is a DirectX11 rendering API created for Project & Portfolio IV (*Graphics-II*) using Gateware libraries. (Which are written & Maintained @ Full Sail University, License's in project.).  
+This is a DirectX11 project created for Project & Portfolio IV (*Graphics-II*) using Gateware libraries. (Which are written & Maintained @ Full Sail University, License's in project.).  
 ***CMake***(**VER.** *3.16+*) is required to build the project, *though there is an executable in the MAIN\Build folder.*
 
 ***MAIN*** is the newest project itself, contains a **BUILD folder contains the executable**.
